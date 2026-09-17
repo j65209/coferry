@@ -112,6 +112,12 @@ async function fetchUrlAsFile(url) {
 
 /* ===== 이미지 / 파일 블록 노드 ===== */
 function safeUrl(u) { return (typeof u === 'string' && u.indexOf(CF.URL) === 0) ? u : ''; }
+// 원본 파일명(한글/특수문자 포함) 그대로 다운로드되도록 ?download=<원본이름> 을 붙인다
+function dlUrl(meta) {
+  const u = safeUrl(meta && meta.url); if (!u) return '';
+  const name = (meta && meta.name) ? meta.name : '';
+  return name ? u + (u.indexOf('?') < 0 ? '?' : '&') + 'download=' + encodeURIComponent(name) : u;
+}
 
 function imageNode(b) {
   const wrap = document.createElement('div'); wrap.style.flex = '1';
@@ -131,8 +137,8 @@ function imageNode(b) {
   rng.onchange = () => { b.meta = Object.assign({}, b.meta, { w: +rng.value }); saveBlock(b, ['meta']); };
   tools.appendChild(rng);
   const dl = document.createElement('button'); dl.className = 'tbtn'; dl.textContent = '↓';
-  dl.title = '다운로드';
-  dl.onclick = () => window.open(safeUrl(b.meta.url), '_blank', 'noopener');
+  dl.title = '원본 파일명 그대로 다운로드';
+  dl.onclick = () => window.open(dlUrl(b.meta), '_blank', 'noopener');
   tools.appendChild(dl);
   const del = document.createElement('button'); del.className = 'tbtn'; del.textContent = '🗑';
   del.onclick = () => removeBlock(b.id);
@@ -159,8 +165,12 @@ function fileNode(b) {
   const mid = document.createElement('span'); mid.style.cssText = 'flex:1;min-width:0';
   const n = document.createElement('span'); n.className = 'fn'; n.textContent = b.meta.name || '파일'; mid.appendChild(n);
   const s = document.createElement('span'); s.className = 'fs';
-  s.textContent = fsize(b.meta.size) + ' · 클릭해서 열기 / 다운로드'; mid.appendChild(s);
+  s.textContent = fsize(b.meta.size) + ' · 클릭 열기 · ↓ 원본 이름으로 다운로드'; mid.appendChild(s);
   a.appendChild(mid);
+  const dl = document.createElement('button'); dl.className = 'tbtn'; dl.textContent = '↓';
+  dl.title = '원본 파일명 그대로 다운로드';
+  dl.onclick = e => { e.preventDefault(); window.open(dlUrl(b.meta), '_blank', 'noopener'); };
+  a.appendChild(dl);
   const del = document.createElement('button'); del.className = 'tbtn'; del.textContent = '🗑';
   del.onclick = e => { e.preventDefault(); removeBlock(b.id); };
   a.appendChild(del);
