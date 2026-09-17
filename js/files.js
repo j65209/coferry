@@ -29,9 +29,13 @@ function upShow(pct, text) {
 function upHide() { setTimeout(() => $('#upBar').classList.add('hidden'), 600); }
 
 async function uploadToStorage(file, onProgress) {
-  const safe = (file.name || 'file').replace(/[^\w.\-가-힣]/g, '_').slice(-60);
-  const ext = safe.includes('.') ? '' : '';
-  const path = (S.pageId || 'misc') + '/' + Date.now() + '_' + Math.random().toString(36).slice(2, 7) + '_' + safe + ext;
+  // Supabase Storage 는 key 에 non-ASCII (한글 등) 가 들어가면 InvalidKey 400.
+  // 원본 파일명은 meta.name / cof_files.name 에 그대로 보관하고, 스토리지 경로만 ASCII 로 안전화.
+  const rawName = file.name || 'file';
+  const dot = rawName.lastIndexOf('.');
+  const ext = dot > 0 ? rawName.slice(dot).replace(/[^\w.\-]/g, '').toLowerCase() : '';
+  const base = (dot > 0 ? rawName.slice(0, dot) : rawName).replace(/[^A-Za-z0-9_-]+/g, '_').slice(-40) || 'file';
+  const path = (S.pageId || 'misc') + '/' + Date.now() + '_' + Math.random().toString(36).slice(2, 7) + '_' + base + ext;
   await new Promise((res, rej) => {
     const xhr = new XMLHttpRequest();
     xhr.open('POST', CF.URL + '/storage/v1/object/' + CF.BUCKET + '/' + encodeURI(path));
