@@ -2,8 +2,8 @@
 'use strict';
 
 const CF = {
-  VER: '1',
-  PIN: '0000',
+  VER: '2',
+  PIN: '2580',
   URL: 'https://ckyjkxbqsyjoqpuqwoce.supabase.co',
   KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNreWpreGJxc3lqb3FwdXF3b2NlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg0MjI2NzEsImV4cCI6MjA5Mzk5ODY3MX0.C8WIGqf-zIYkCq0dGWTMjIYuPM-IVInMn1p6FaWbVKA',
   BUCKET: 'coferry',
