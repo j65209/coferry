@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=5">
 <title>coferry design center</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎨</text></svg>">
-<link rel="stylesheet" href="style.css?v=4">
+<link rel="stylesheet" href="style.css?v=5">
 </head>
 <body>
 
@@ -44,7 +44,7 @@
 
     <div class="top-right">
       <div id="presence" class="presence"></div>
-      <div id="saveTag" class="save-tag">대기</div>
+      <div id="saveTag" class="save-tag">저장됨</div>
       <div class="fontsize">
         <button class="icon-btn" id="fsDown" title="글자 작게">A−</button>
         <span id="fsVal">100%</span>
@@ -61,7 +61,7 @@
     <!-- 사이드바 -->
     <aside id="sidebar" class="sidebar">
       <div class="side-top">
-        <input id="searchBox" class="search" placeholder="🔍 검색 (제목·본문)">
+        <input id="searchBox" class="search" placeholder="🔍 검색">
       </div>
       <div class="side-filter" id="statusFilter"></div>
       <div id="searchResult" class="search-result hidden"></div>
@@ -78,7 +78,7 @@
       <div id="emptyState" class="empty">
         <div class="empty-emoji">🎨</div>
         <h2>coferry design center</h2>
-        <p>왼쪽에서 페이지를 고르거나 <b>＋ 새 페이지</b>로 시작하세요.</p>
+        <p>왼쪽에서 페이지를 고르거나 새로 만드세요.</p>
       </div>
 
       <div id="pageWrap" class="page-wrap hidden">
@@ -87,10 +87,9 @@
           <div id="pageTitle" class="page-title" contenteditable="plaintext-only"
                data-ph="제목 없음"></div>
         </div>
-        <div id="statusBar" class="status-bar"></div>
         <div class="page-meta" id="pageMeta"></div>
         <div id="editor" class="editor"></div>
-        <div id="dropHint" class="drop-hint">여기에 놓으면 업로드됩니다 · 이미지 / PDF / 엑셀</div>
+        <div id="dropHint" class="drop-hint">여기에 놓으면 업로드됩니다</div>
       </div>
 
       <div id="filesView" class="files-view hidden"></div>
@@ -107,7 +106,7 @@
       <div id="cList" class="c-list"></div>
       <div class="c-input">
         <div id="cTargetTag" class="c-target hidden"></div>
-        <textarea id="cBox" rows="1" placeholder="피드백 남기기…  (Enter 전송 · Shift+Enter 줄바꿈)"></textarea>
+        <textarea id="cBox" rows="1" placeholder="피드백 남기기…  Enter로 보내기"></textarea>
         <button id="cSend" class="c-send">보내기</button>
       </div>
     </aside>
@@ -129,11 +128,11 @@
 <input type="file" id="filePicker" multiple hidden
        accept="image/*,.pdf,.xls,.xlsx,.csv,.ppt,.pptx,.doc,.docx,.ai,.psd,.zip">
 
-<script src="js/core.js?v=4"></script>
-<script src="js/pages.js?v=4"></script>
-<script src="js/editor.js?v=4"></script>
-<script src="js/files.js?v=4"></script>
-<script src="js/comments.js?v=4"></script>
-<script src="js/boot.js?v=4"></script>
+<script src="js/core.js?v=5"></script>
+<script src="js/pages.js?v=5"></script>
+<script src="js/editor.js?v=5"></script>
+<script src="js/files.js?v=5"></script>
+<script src="js/comments.js?v=5"></script>
+<script src="js/boot.js?v=5"></script>
 </body>
 </html>

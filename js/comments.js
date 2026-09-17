@@ -45,8 +45,8 @@ function renderComments() {
 
   if (!rows.length) {
     const e = document.createElement('div'); e.className = 'c-empty';
-    e.textContent = S.cTarget ? '이 줄에 남긴 피드백이 없습니다.\n아래에 적어보세요.'
-      : '아직 피드백이 없습니다.\n줄 오른쪽 💬 를 눌러 특정 줄에 달 수도 있어요.';
+    e.textContent = S.cTarget ? '이 줄엔 아직 피드백이 없습니다.'
+      : '피드백을 남겨보세요.\n줄 옆 💬 로 특정 줄에도 달 수 있어요.';
     e.style.whiteSpace = 'pre-line';
     list.appendChild(e);
     return;

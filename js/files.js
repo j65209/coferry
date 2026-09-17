@@ -198,7 +198,7 @@ async function showFiles() {
   const v = $('#filesView'); v.classList.remove('hidden'); v.textContent = '';
   const h = document.createElement('h2'); h.textContent = '📎 파일함'; v.appendChild(h);
   const sub = document.createElement('div'); sub.className = 'sub';
-  sub.textContent = '업로드한 이미지 · PDF · 엑셀 전부'; v.appendChild(sub);
+  sub.textContent = '지금까지 올린 이미지 · PDF · 엑셀 · 문서'; v.appendChild(sub);
 
   let rows = [];
   try { rows = await sb('cof_files?select=*&order=created_at.desc&limit=400') || []; }

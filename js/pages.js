@@ -125,6 +125,7 @@ async function openPage(id, focusTitle) {
     .sort((a, b) => (a.sort || 0) - (b.sort || 0));
   if (!S.blocks.length) S.blocks = [makeBlock(id, 'text', 1000)];
   renderEditor(true);
+  renderPageHead();                       // 블록 로드 후 ✅ N/M 카운터 최신화
   loadComments(id);
   if (focusTitle) setTimeout(() => { const t = $('#pageTitle'); t.focus(); }, 40);
 }
@@ -138,26 +139,38 @@ function renderPageHead() {
   if (t.dataset.pid !== p.id) { t.dataset.pid = p.id; t.textContent = p.title || ''; }
   else if (document.activeElement !== t) t.textContent = p.title || '';
 
-  const bar = $('#statusBar'); bar.textContent = '';
+  const meta = $('#pageMeta'); meta.textContent = '';
+  const st = statusOf(p.status);
+  const chip = document.createElement('button');
+  chip.className = 'status-chip'; chip.style.background = st.color;
+  chip.textContent = st.label; chip.title = '상태 변경';
+  chip.onclick = () => openStatusMenu(p, chip);
+  meta.appendChild(chip);
+
+  const info = document.createElement('span');
+  const done = S.blocks.filter(b => b.type === 'todo' && b.checked).length;
+  const todo = S.blocks.filter(b => b.type === 'todo').length;
+  info.textContent = ago(p.updated_at) + ' · ' + (p.updated_by || '-')
+    + (todo ? '   ✅ ' + done + '/' + todo : '');
+  meta.appendChild(info);
+}
+
+function openStatusMenu(p, anchor) {
+  const box = $('#blockMenu'); box.textContent = '';
   CF.STATUS.forEach(s => {
     const b = document.createElement('button');
-    b.className = 'spill' + (p.status === s.id ? ' on' : '');
-    b.textContent = s.label;
-    if (p.status === s.id) b.style.background = s.color;
-    else b.style.color = s.color;
+    if (p.status === s.id) b.className = 'on';
+    const dot = document.createElement('span'); dot.className = 'si-dot'; dot.style.background = s.color;
+    b.appendChild(dot);
+    const lbl = document.createElement('span'); lbl.textContent = s.label; b.appendChild(lbl);
     b.onclick = () => {
       p.status = s.id; savePage(p, ['status']);
       renderPageHead(); renderTree();
-      toast(('"' + (p.title || '제목 없음') + '" → ' + s.label));
+      box.classList.add('hidden');
     };
-    bar.appendChild(b);
+    box.appendChild(b);
   });
-
-  const meta = $('#pageMeta');
-  const done = S.blocks.filter(b => b.type === 'todo' && b.checked).length;
-  const todo = S.blocks.filter(b => b.type === 'todo').length;
-  meta.textContent = '마지막 수정 ' + ago(p.updated_at) + ' · ' + (p.updated_by || '-')
-    + (todo ? '   ✅ ' + done + '/' + todo : '');
+  popAt(box, anchor.getBoundingClientRect());
 }
 
 function archivePage(p) {
@@ -256,7 +269,7 @@ function showArchive() {
   const v = $('#archiveView'); v.classList.remove('hidden'); v.textContent = '';
   const h = document.createElement('h2'); h.textContent = '🗄 보관함'; v.appendChild(h);
   const s = document.createElement('div'); s.className = 'sub';
-  s.textContent = '삭제한 페이지는 여기 보관됩니다. 복원하거나 완전히 지울 수 있어요.'; v.appendChild(s);
+  s.textContent = '삭제한 페이지 · 여기서 복원하거나 완전히 지울 수 있어요.'; v.appendChild(s);
   const list = S.pages.filter(p => p.archived);
   if (!list.length) { const e = document.createElement('div'); e.className = 'c-empty'; e.textContent = '비어 있습니다'; v.appendChild(e); return; }
   list.forEach(p => {
