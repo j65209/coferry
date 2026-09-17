@@ -92,7 +92,7 @@ function renderTree() {
 
 function saveUI() {
   const u = lsGet(K.ui, {});
-  u.filter = S.filter; u.fs = S.fs; u.theme = S.theme; u.showComments = S.showComments;
+  u.filter = S.filter; u.fs = S.fs; u.showComments = S.showComments; u.sideOpen = S.sideOpen;
   lsSet(K.ui, u);
 }
 

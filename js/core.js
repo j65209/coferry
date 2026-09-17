@@ -30,7 +30,7 @@ const K = {
 const S = {
   me: null, pages: [], pageId: null, blocks: [], comments: [],
   settings: {}, filter: 'all', view: 'page',
-  fs: 100, theme: 'light', showComments: true, showResolved: false,
+  fs: 100, theme: 'light', showComments: true, showResolved: false, sideOpen: true,
   cTarget: null, online: [], booted: false
 };
 

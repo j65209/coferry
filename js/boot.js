@@ -6,8 +6,12 @@ function applyFS() {
   $('#fsVal').textContent = S.fs + '%';
 }
 function applyTheme() {
-  document.documentElement.dataset.theme = S.theme;
-  $('#btnTheme').textContent = S.theme === 'dark' ? '☀️' : '🌙';
+  // 다크모드 UI 제거. 항상 라이트 유지.
+  document.documentElement.dataset.theme = 'light';
+}
+function applySide() {
+  document.body.classList.toggle('side-collapsed', !S.sideOpen);
+  const btn = $('#btnSidebar'); if (btn) btn.textContent = S.sideOpen ? '☰' : '☷';
 }
 function renderMe() {
   const m = member(S.me);
@@ -26,14 +30,17 @@ function renderMe() {
 function bindTop() {
   $('#fsUp').onclick   = () => { S.fs = Math.min(190, S.fs + 10); applyFS(); saveUI(); };
   $('#fsDown').onclick = () => { S.fs = Math.max(70,  S.fs - 10); applyFS(); saveUI(); };
-  $('#btnTheme').onclick = () => { S.theme = S.theme === 'dark' ? 'light' : 'dark'; applyTheme(); saveUI(); };
   $('#btnComments').onclick = () => { S.showComments = !S.showComments; applyPanel(); };
   $('#btnCloseComments').onclick = () => { S.showComments = false; applyPanel(); };
   $('#showResolved').onchange = e => { S.showResolved = e.target.checked; renderComments(); };
   $('#btnNewPage').onclick = () => newPage(null);
   $('#btnFiles').onclick = showFiles;
   $('#btnArchive').onclick = showArchive;
-  $('#btnSidebar').onclick = () => $('#sidebar').classList.toggle('open');
+  $('#btnSidebar').onclick = () => {
+    // 데스크톱: 좌측 사이드바 접기/펼치기. 모바일: 오버레이 오픈 토글.
+    if (matchMedia('(max-width:760px)').matches) { $('#sidebar').classList.toggle('open'); }
+    else { S.sideOpen = !S.sideOpen; applySide(); saveUI(); }
+  };
   $('#btnPick').onclick = () => pickFiles(null);
 
   const cbox = $('#cBox');
@@ -77,10 +84,11 @@ async function boot() {
   if (S.booted) return;
   S.booted = true;
   const ui = lsGet(K.ui, {});
-  S.fs = ui.fs || 100; S.theme = ui.theme || 'light';
+  S.fs = ui.fs || 100; S.theme = 'light';
   S.filter = ui.filter || 'all';
   S.showComments = ui.showComments !== false;
-  applyFS(); applyTheme(); applyPanel(); renderMe();
+  S.sideOpen = ui.sideOpen !== false;
+  applyFS(); applyTheme(); applyPanel(); applySide(); renderMe();
 
   $('#app').classList.remove('hidden');
   bindTop(); bindPageHead(); bindSearch(); bindDrop(); bindLogo();
