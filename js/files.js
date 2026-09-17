@@ -51,8 +51,10 @@ async function uploadToStorage(file, onProgress) {
 }
 
 async function uploadAndInsert(file, afterBlockId) {
-  if (!S.pageId) { toast('먼저 페이지를 여세요'); return; }
-  if (file.size > CF.MAX_MB * 1048576) { toast(file.name + ' — ' + CF.MAX_MB + 'MB 를 넘어 올릴 수 없습니다'); return; }
+  if (!S.pageId) { newPage(null); }              // 페이지가 없으면 즉석에서 하나 만든다
+  if (!S.pageId) { toast('페이지를 만들지 못했습니다'); return; }
+  if (!file || !file.size) { toast('빈 파일입니다: ' + (file && file.name || '?')); return; }
+  if (file.size > CF.MAX_MB * 1048576) { toast(file.name + ' — ' + CF.MAX_MB + 'MB 를 넘습니다'); return; }
   upShow(4, '올리는 중… ' + file.name);
   try {
     const { path, url } = await uploadToStorage(file, p => upShow(p, Math.round(p) + '% · ' + file.name));
@@ -81,8 +83,8 @@ async function uploadAndInsert(file, afterBlockId) {
     renderEditorKeepFocus(null);
   } catch (e) {
     upHide();
-    console.warn(e);
-    toast('업로드 실패: ' + file.name);
+    console.warn('[coferry] upload failed', e);
+    toast('업로드 실패 · ' + file.name + ' — ' + ((e && e.message) || '').slice(0, 100));
   }
 }
 function pickFiles(afterBlockId) {
@@ -93,6 +95,15 @@ function pickFiles(afterBlockId) {
     (async () => { for (const f of files) await uploadAndInsert(f, afterBlockId); })();
   };
   inp.click();
+}
+
+// 웹페이지에서 이미지를 끌어왔거나 클립보드에 복사한 이미지를 File 로 변환
+async function fetchUrlAsFile(url) {
+  const r = await fetch(url, { credentials: 'omit' });
+  if (!r.ok) throw new Error('URL fetch ' + r.status);
+  const blob = await r.blob();
+  const name = decodeURIComponent((url.split('/').pop() || 'image').split('?')[0]).slice(-80) || 'image';
+  return new File([blob], name, { type: blob.type || 'application/octet-stream' });
 }
 
 /* ===== 이미지 / 파일 블록 노드 ===== */
@@ -170,24 +181,61 @@ function lightbox(url) {
   document.body.appendChild(d);
 }
 
-/* ===== 드래그 앤 드롭 ===== */
+/* ===== 드래그 앤 드롭 · 붙여넣기 ===== */
 function bindDrop() {
   let depth = 0;
+  const isFileDrag = e => {
+    if (!e.dataTransfer) return false;
+    const types = Array.from(e.dataTransfer.types || []);
+    return types.indexOf('Files') >= 0
+        || types.indexOf('text/uri-list') >= 0
+        || types.indexOf('text/x-moz-url') >= 0;
+  };
   window.addEventListener('dragenter', e => {
-    if (!e.dataTransfer || Array.from(e.dataTransfer.types || []).indexOf('Files') < 0) return;
+    if (!isFileDrag(e)) return;
     depth++; document.body.classList.add('dragging');
   });
-  window.addEventListener('dragleave', () => { depth = Math.max(0, depth - 1); if (!depth) document.body.classList.remove('dragging'); });
+  window.addEventListener('dragleave', () => {
+    depth = Math.max(0, depth - 1); if (!depth) document.body.classList.remove('dragging');
+  });
   window.addEventListener('dragover', e => { if (document.body.classList.contains('dragging')) e.preventDefault(); });
   window.addEventListener('drop', e => {
-    if (!document.body.classList.contains('dragging')) return;
+    if (!document.body.classList.contains('dragging') && !isFileDrag(e)) return;
     e.preventDefault(); depth = 0; document.body.classList.remove('dragging');
-    const files = Array.from((e.dataTransfer && e.dataTransfer.files) || []);
-    if (!files.length) return;
     const row = e.target.closest && e.target.closest('.blk');
     const anchor = row ? row.dataset.id : null;
-    (async () => { for (const f of files) await uploadAndInsert(f, anchor); })();
+    handleDropOrPaste(e.dataTransfer, anchor);
   });
+
+  // 붙여넣기 (Cmd/Ctrl+V) — 클립보드 이미지 지원
+  window.addEventListener('paste', e => {
+    if (!e.clipboardData) return;
+    const files = Array.from(e.clipboardData.files || []);
+    if (!files.length) return;
+    const inEditable = document.activeElement && document.activeElement.isContentEditable;
+    if (inEditable) e.preventDefault();
+    (async () => { for (const f of files) await uploadAndInsert(f, null); })();
+  });
+}
+
+async function handleDropOrPaste(dt, anchor) {
+  if (!dt) return;
+  const files = Array.from(dt.files || []);
+  if (files.length) {
+    for (const f of files) await uploadAndInsert(f, anchor);
+    return;
+  }
+  // 파일이 없으면 URL 로 온 이미지(다른 탭에서 끌어오기)를 시도한다
+  const url = dt.getData('text/uri-list') || dt.getData('URL') || dt.getData('text/plain');
+  if (url && /^https?:\/\//.test(url)) {
+    try {
+      const f = await fetchUrlAsFile(url);
+      await uploadAndInsert(f, anchor);
+    } catch (e) {
+      console.warn('[coferry] URL drop failed', e);
+      toast('이 이미지는 가져올 수 없습니다 (CORS). 파일을 다운로드한 뒤 끌어다 놓아 주세요.');
+    }
+  }
 }
 
 /* ===== 파일함 ===== */

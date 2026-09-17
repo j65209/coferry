@@ -68,6 +68,14 @@ function renderTree() {
       add.onclick = e => { e.stopPropagation(); newPage(p.id); };
       row.appendChild(add);
 
+      const del = document.createElement('button');
+      del.className = 't-del'; del.textContent = '✕'; del.title = '보관함으로 이동';
+      del.onclick = e => {
+        e.stopPropagation();
+        if (confirm('"' + (p.title || '제목 없음') + '" 을(를) 보관함으로 옮길까요?')) archivePage(p);
+      };
+      row.appendChild(del);
+
       row.onclick = () => openPage(p.id);
       nav.appendChild(row);
       if (!collapsed[p.id]) walk(p.id, depth + 1);
@@ -182,6 +190,19 @@ function archivePage(p) {
   renderTree();
 }
 
+async function deletePage(p) {
+  if (!confirm('"' + (p.title || '제목 없음') + '" 을(를) 블록 · 피드백까지 완전히 지울까요?\n(되돌릴 수 없습니다)')) return;
+  S.pages = S.pages.filter(x => x.id !== p.id);
+  try {
+    await sb('cof_blocks?page_id=eq.' + p.id, { method: 'DELETE' });
+    await sb('cof_comments?page_id=eq.' + p.id, { method: 'DELETE' });
+  } catch (e) { /* 로컬 삭제는 이어서 진행 */ }
+  Q.del('cof_pages', p.id);
+  if (S.pageId === p.id) { S.pageId = null; $('#pageWrap').classList.add('hidden'); $('#emptyState').classList.remove('hidden'); }
+  renderTree();
+  toast('"' + (p.title || '제목 없음') + '" 완전 삭제됨');
+}
+
 /* ===== 제목 / 아이콘 ===== */
 function bindPageHead() {
   const t = $('#pageTitle');
@@ -194,6 +215,25 @@ function bindPageHead() {
   t.addEventListener('keydown', e => {
     if (e.key === 'Enter') { e.preventDefault(); focusBlock(S.blocks[0] && S.blocks[0].id, 'end'); }
   });
+
+  $('#pageMenu').onclick = e => {
+    const p = pageById(S.pageId); if (!p) return;
+    const box = $('#blockMenu'); box.textContent = '';
+    const mk = (icon, label, action, danger) => {
+      const b = document.createElement('button');
+      const ic = document.createElement('span'); ic.className = 'si'; ic.textContent = icon; b.appendChild(ic);
+      const lb = document.createElement('span'); lb.textContent = label; b.appendChild(lb);
+      if (danger) lb.style.color = 'var(--err)';
+      b.onclick = () => { box.classList.add('hidden'); action(); };
+      box.appendChild(b);
+    };
+    mk('📎', '파일 올리기', () => pickFiles(null));
+    mk('🎨', '아이콘 변경', () => $('#pageIcon').click());
+    const sep = document.createElement('div'); sep.className = 'sep'; box.appendChild(sep);
+    mk('🗄', '보관함으로 이동', () => archivePage(p));
+    mk('🗑', '완전 삭제', () => deletePage(p), true);
+    popAt(box, e.currentTarget.getBoundingClientRect());
+  };
 
   $('#pageIcon').onclick = e => {
     const box = $('#emojiPick'); box.textContent = '';

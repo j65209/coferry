@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=5">
 <title>coferry design center</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎨</text></svg>">
-<link rel="stylesheet" href="style.css?v=5">
+<link rel="stylesheet" href="style.css?v=6">
 </head>
 <body>
 
@@ -86,15 +86,20 @@
           <button id="pageIcon" class="page-icon" title="아이콘 변경">📄</button>
           <div id="pageTitle" class="page-title" contenteditable="plaintext-only"
                data-ph="제목 없음"></div>
+          <button id="pageMenu" class="page-menu-btn" title="페이지 메뉴">⋯</button>
         </div>
         <div class="page-meta" id="pageMeta"></div>
         <div id="editor" class="editor"></div>
-        <div id="dropHint" class="drop-hint">여기에 놓으면 업로드됩니다</div>
+        <button id="btnPick" class="drop-guide">
+          <span class="dg-ic">📎</span>
+          <span class="dg-tx">파일 올리기 · <b>끌어다 놓아도</b> 됩니다 (이미지·PDF·엑셀·문서·zip 무엇이든)</span>
+        </button>
       </div>
 
       <div id="filesView" class="files-view hidden"></div>
       <div id="archiveView" class="files-view hidden"></div>
     </main>
+    <div id="dropHint" class="drop-hint">여기에 놓으면 업로드됩니다</div>
 
     <!-- 피드백 패널 -->
     <aside id="cpanel" class="cpanel">
@@ -125,14 +130,13 @@
   <div id="upBar" class="upbar hidden"><div id="upFill" class="upfill"></div><span id="upText"></span></div>
 </div>
 
-<input type="file" id="filePicker" multiple hidden
-       accept="image/*,.pdf,.xls,.xlsx,.csv,.ppt,.pptx,.doc,.docx,.ai,.psd,.zip">
+<input type="file" id="filePicker" multiple hidden>
 
-<script src="js/core.js?v=5"></script>
-<script src="js/pages.js?v=5"></script>
-<script src="js/editor.js?v=5"></script>
-<script src="js/files.js?v=5"></script>
-<script src="js/comments.js?v=5"></script>
-<script src="js/boot.js?v=5"></script>
+<script src="js/core.js?v=6"></script>
+<script src="js/pages.js?v=6"></script>
+<script src="js/editor.js?v=6"></script>
+<script src="js/files.js?v=6"></script>
+<script src="js/comments.js?v=6"></script>
+<script src="js/boot.js?v=6"></script>
 </body>
 </html>

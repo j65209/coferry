@@ -34,6 +34,7 @@ function bindTop() {
   $('#btnFiles').onclick = showFiles;
   $('#btnArchive').onclick = showArchive;
   $('#btnSidebar').onclick = () => $('#sidebar').classList.toggle('open');
+  $('#btnPick').onclick = () => pickFiles(null);
 
   const cbox = $('#cBox');
   cbox.addEventListener('input', () => autoGrow(cbox));
