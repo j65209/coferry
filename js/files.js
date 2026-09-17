@@ -2,15 +2,30 @@
 'use strict';
 
 const ICONS = [
-  [/pdf/,                         '📕'],
-  [/sheet|excel|csv|numbers/,     '📊'],
-  [/presentation|powerpoint|keynote/, '📽'],
-  [/word|document|rtf/,           '📄'],
-  [/zip|compress|rar|7z/,         '🗜'],
-  [/photoshop|psd/,               '🖌'],
-  [/illustrator|postscript|ai$/,  '✒️'],
-  [/video/,                       '🎬'],
-  [/audio/,                       '🎧']
+  [/pdf/,                                                              '📕'],
+  [/sheet|excel|csv|numbers|\.xlsx?$|\.numbers$/,                       '📊'],
+  [/presentation|powerpoint|keynote|\.pptx?$|\.key$/,                   '📽'],
+  [/word|document|rtf|hwp|\.docx?$|\.hwp$|\.pages$/,                    '📄'],
+  [/zip|compress|rar|7z|gzip|\.zip$|\.rar$|\.7z$|\.gz$|\.tar$/,         '🗜'],
+  // 어도비 · 스케치 · 피그마 · Affinity · CorelDRAW 등 디자인 소스
+  [/photoshop|\.psd$|\.psb$/,                                          '🖌'],
+  [/illustrator|postscript|\.ai$|\.eps$|\.svg$/,                        '✒️'],
+  [/indesign|\.indd$|\.idml$/,                                          '📰'],
+  [/sketch|figma|\.sketch$|\.fig$|xd$|\.xd$/,                           '🎨'],
+  [/affinity|\.afdesign$|\.afphoto$|\.afpub$/,                          '🎨'],
+  [/coreldraw|\.cdr$/,                                                  '🎨'],
+  // 영상 · 편집 프로젝트
+  [/premiere|\.prproj$|\.aep$|\.aet$|after.?effects/,                   '🎞'],
+  [/finalcut|\.fcpxml$|\.motn$/,                                        '🎞'],
+  [/davinci|\.drp$/,                                                    '🎞'],
+  [/video|\.mp4$|\.mov$|\.avi$|\.mkv$|\.webm$/,                         '🎬'],
+  [/audio|\.mp3$|\.wav$|\.aac$|\.flac$|\.m4a$|\.ogg$/,                  '🎧'],
+  // 3D · 캐드
+  [/\.blend$|\.c4d$|\.max$|\.ma$|\.mb$|\.3dm$|\.skp$|\.obj$|\.fbx$|\.glb$|\.gltf$/, '🧊'],
+  [/\.dwg$|\.dxf$|autocad/,                                             '📐'],
+  // 개발 · 텍스트
+  [/font|\.ttf$|\.otf$|\.woff2?$/,                                      '🔤'],
+  [/text\/|\.txt$|\.md$|\.json$|\.xml$|\.yml$|\.yaml$|\.csv$/,          '📃']
 ];
 function iconFor(mime, name) {
   const s = ((mime || '') + ' ' + (name || '')).toLowerCase();
@@ -42,7 +57,8 @@ async function uploadToStorage(file, onProgress) {
     xhr.setRequestHeader('apikey', CF.KEY);
     xhr.setRequestHeader('Authorization', 'Bearer ' + CF.KEY);
     xhr.setRequestHeader('x-upsert', 'true');
-    if (file.type) xhr.setRequestHeader('Content-Type', file.type);
+    // 브라우저가 .ai/.psd/.indd/.sketch 등에 mime 을 못 붙이면 빈 문자열이 온다 → 안전한 기본값
+    xhr.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
     xhr.upload.onprogress = e => { if (e.lengthComputable && onProgress) onProgress(e.loaded / e.total * 100); };
     xhr.onload = () => (xhr.status >= 200 && xhr.status < 300) ? res() : rej(new Error(xhr.status + ' ' + xhr.responseText.slice(0, 200)));
     xhr.onerror = () => rej(new Error('network'));
