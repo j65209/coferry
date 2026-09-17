@@ -212,6 +212,16 @@ function saveBlock(b, fields) {
 
 /* ===== 인증 ===== */
 function lockInit() {
+  // 오피스앱 iframe 안에서 열릴 때는 PIN·사용자 선택 스킵.
+  //   ?embed=1&me=<이름>  →  이미 사내 인증됐다고 간주하고 곧장 부팅
+  const qs = new URLSearchParams(location.search);
+  if (qs.get('embed') === '1') {
+    document.body.classList.add('embed');            // 상단바·잠금 스타일 축소용
+    lsSet(K.auth, true); lsSet(K.ver, CF.VER);
+    const me = (qs.get('me') || '').trim();
+    if (me) lsSet(K.me, me);
+    else if (!lsGet(K.me)) lsSet(K.me, '대표');       // 이름 미지정 시 기본값
+  }
   if (lsGet(K.ver) !== CF.VER) { localStorage.removeItem(K.auth); lsSet(K.ver, CF.VER); }
   if (lsGet(K.auth) === true) { afterPin(); return; }
   const inp = $('#pinInput');
