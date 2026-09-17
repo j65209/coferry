@@ -126,24 +126,67 @@ function imageNode(b) {
   img.className = 'blk-img'; img.loading = 'lazy';
   img.src = safeUrl(b.meta.url); img.alt = b.meta.name || '';
   img.style.width = (b.meta.w || 620) + 'px';
-  img.onclick = () => lightbox(safeUrl(b.meta.url));
+  img.onclick = e => { if (box.classList.contains('resizing')) return; lightbox(safeUrl(b.meta.url)); };
   box.appendChild(img);
 
   const tools = document.createElement('div'); tools.className = 'imgtools';
-  const rng = document.createElement('input');
-  rng.type = 'range'; rng.min = 160; rng.max = 1000; rng.value = b.meta.w || 620;
-  rng.title = '이미지 크기';
-  rng.oninput = () => { img.style.width = rng.value + 'px'; };
-  rng.onchange = () => { b.meta = Object.assign({}, b.meta, { w: +rng.value }); saveBlock(b, ['meta']); };
-  tools.appendChild(rng);
+  const sizeTag = document.createElement('span'); sizeTag.className = 'size-tag';
+  sizeTag.textContent = (b.meta.w || 620) + 'px';
+  const applyW = w => {
+    const clamped = Math.max(120, Math.min(1400, Math.round(w)));
+    img.style.width = clamped + 'px';
+    sizeTag.textContent = clamped + 'px';
+    return clamped;
+  };
+  const persistW = w => {
+    b.meta = Object.assign({}, b.meta, { w: w });
+    saveBlock(b, ['meta']);
+  };
+  // 프리셋 (S / M / L / 풀)
+  [['S', 280], ['M', 520], ['L', 800], ['풀', 1200]].forEach(([label, w]) => {
+    const btn = document.createElement('button'); btn.className = 'tbtn size';
+    btn.textContent = label; btn.title = w + 'px';
+    btn.onclick = e => { e.stopPropagation(); persistW(applyW(w)); };
+    tools.appendChild(btn);
+  });
+  tools.appendChild(sizeTag);
   const dl = document.createElement('button'); dl.className = 'tbtn'; dl.textContent = '↓';
   dl.title = '원본 파일명 그대로 다운로드';
-  dl.onclick = () => window.open(dlUrl(b.meta), '_blank', 'noopener');
+  dl.onclick = e => { e.stopPropagation(); window.open(dlUrl(b.meta), '_blank', 'noopener'); };
   tools.appendChild(dl);
   const del = document.createElement('button'); del.className = 'tbtn'; del.textContent = '🗑';
-  del.onclick = () => removeBlock(b.id);
+  del.onclick = e => { e.stopPropagation(); removeBlock(b.id); };
   tools.appendChild(del);
   box.appendChild(tools);
+
+  // 우측·모서리 드래그 핸들 (노션식) — 마우스/터치 모두
+  const startDrag = (edge, ev) => {
+    ev.preventDefault(); ev.stopPropagation();
+    box.classList.add('resizing');
+    const startW = img.getBoundingClientRect().width;
+    const startX = (ev.touches ? ev.touches[0] : ev).clientX;
+    const scale = edge === 'left' ? -1 : 1;   // 좌측 핸들이면 반대 방향
+    let last = startW;
+    const move = e => {
+      const cx = (e.touches ? e.touches[0] : e).clientX;
+      last = applyW(startW + (cx - startX) * scale);
+    };
+    const up = () => {
+      window.removeEventListener('mousemove', move); window.removeEventListener('mouseup', up);
+      window.removeEventListener('touchmove', move); window.removeEventListener('touchend', up);
+      setTimeout(() => box.classList.remove('resizing'), 60);  // 방금 놓은 뒤 click 은 무시
+      persistW(last);
+    };
+    window.addEventListener('mousemove', move);   window.addEventListener('mouseup', up);
+    window.addEventListener('touchmove', move, { passive: false }); window.addEventListener('touchend', up);
+  };
+  ['right', 'left'].forEach(side => {
+    const h = document.createElement('div'); h.className = 'img-handle ' + side;
+    h.onmousedown  = e => startDrag(side, e);
+    h.ontouchstart = e => startDrag(side, e);
+    box.appendChild(h);
+  });
+
   wrap.appendChild(box);
 
   const cap = document.createElement('div');
