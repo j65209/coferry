@@ -74,7 +74,10 @@ async function uploadAndInsert(file, afterBlockId) {
   if (!S.pageId) { newPage(null); }              // 페이지가 없으면 즉석에서 하나 만든다
   if (!S.pageId) { toast('페이지를 만들지 못했습니다'); return; }
   if (!file || !file.size) { toast('빈 파일입니다: ' + (file && file.name || '?')); return; }
-  if (file.size > CF.MAX_MB * 1048576) { toast(file.name + ' — ' + CF.MAX_MB + 'MB 를 넘습니다'); return; }
+  if (file.size > CF.MAX_MB * 1048576) {
+    toast(file.name + ' — ' + Math.round(file.size / 1048576) + 'MB / ' + CF.MAX_MB + 'MB 제한 (Supabase 무료 플랜). 압축·분할하거나 Pro 로 올려주세요');
+    return;
+  }
   upShow(4, '올리는 중… ' + file.name);
   try {
     const { path, url } = await uploadToStorage(file, p => upShow(p, Math.round(p) + '% · ' + file.name));
