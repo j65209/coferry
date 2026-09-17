@@ -19,7 +19,7 @@ const CF = {
     { id: 'done',     label: '완료',   color: '#0f9d58' },
     { id: 'hold',     label: '보류',   color: '#e08a1e' }
   ],
-  MAX_MB: 45
+  MAX_MB: 2000               // 개별 파일 상한 2 GB (Supabase 버킷도 2 GB 로 열어둠)
 };
 const K = {
   auth: 'cof_auth', ver: 'cof_auth_ver', me: 'cof_me', ui: 'cof_ui',
