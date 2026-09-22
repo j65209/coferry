@@ -381,6 +381,7 @@ function onRemotePage(payload) {
   if (payload.eventType === 'DELETE' || r.deleted_at) { S.pages = S.pages.filter(p => p.id !== r.id); renderTree(); return; }
   if (isTomb(r.id)) return;
   if (Q.pendingIds().has(r.id)) return;          // 내가 방금 고친 건 원격이 덮지 않게
+  if (r.client_id && r.client_id === S.sid) return;   // self-echo (세션 기반)
   const i = S.pages.findIndex(p => p.id === r.id);
   if (i < 0) S.pages.push(r); else S.pages[i] = r;
   renderTree();

@@ -360,7 +360,8 @@ function onRemoteBlock(payload) {
     if (typeof removeAutoEventsForBlock === 'function') try { removeAutoEventsForBlock(r.id); } catch (e) {}
     return;
   }
-  if (r.updated_by === S.me) return;
+  // self-echo: 이 브라우저 세션이 방금 올린 UPDATE 만 필터. 이름 겹쳐도 세션이 다르면 통과.
+  if (r.client_id && r.client_id === S.sid) return;
 
   const i = blockIndex(r.id);
   if (i < 0) {

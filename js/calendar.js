@@ -382,6 +382,7 @@ function onRemoteEvent(payload) {
   }
   if (isTomb(r.id)) return;
   if (Q.pendingIds().has(r.id)) return;
+  if (r.client_id && r.client_id === S.sid) return;   // self-echo (세션 기반)
   const i = S.events.findIndex(e => e.id === r.id);
   if (i < 0) S.events.push(r); else S.events[i] = r;
   renderCalendar();

@@ -36,7 +36,10 @@ const S = {
   me: null, pages: [], pageId: null, blocks: [], comments: [],
   settings: {}, filter: 'all', view: 'page',
   fs: 100, theme: 'light', showComments: true, showResolved: false, sideOpen: true,
-  cTarget: null, online: [], booted: false
+  cTarget: null, online: [], booted: false,
+  // 이 브라우저 탭의 세션 ID. onRemote 에서 자기 UPDATE 이벤트만 정확히 걸러내려고 사용.
+  // 이름(updated_by) 이 겹쳐도 (대표 2인, 게스트 등) 서로의 편집이 잘 보인다.
+  sid: (crypto.randomUUID ? crypto.randomUUID() : (Date.now() + '-' + Math.random().toString(36).slice(2))).slice(0, 22)
 };
 
 /* ===== 유틸 ===== */
@@ -163,6 +166,8 @@ const Q = {
   persist() { lsSet(K.queue, this.ops.slice(0, 600)); },
 
   up(table, row) {
+    // cof_settings 는 key PK 라 client_id 컬럼 없음, 나머지는 자동 세팅
+    if (table !== 'cof_settings' && !row.client_id) row.client_id = S.sid;
     const i = this.ops.findIndex(o => o.k === 'up' && o.t === table && o.r.id === row.id);
     if (i >= 0) this.ops[i].r = Object.assign(this.ops[i].r, row);
     else this.ops.push({ k: 'up', t: table, r: row });

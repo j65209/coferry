@@ -152,14 +152,15 @@ function onRemoteComment(payload) {
   const r = payload.new || payload.old; if (!r) return;
   if (payload.eventType === 'DELETE' || r.deleted_at) { S.comments = S.comments.filter(c => c.id !== r.id); renderComments(); refreshCommentCounts(); return; }
   if (isTomb(r.id)) return;
+  const isSelf = r.client_id && r.client_id === S.sid;
   if (r.page_id !== S.pageId) {
-    if (r.author !== S.me && payload.eventType === 'INSERT') notify(r);
+    if (!isSelf && payload.eventType === 'INSERT') notify(r);
     return;
   }
   const i = S.comments.findIndex(c => c.id === r.id);
   if (i < 0) {
     S.comments.push(r);
-    if (r.author !== S.me) { notify(r); if (S.showComments) toast('💬 ' + r.author + ' 님의 새 피드백'); }
+    if (!isSelf) { notify(r); if (S.showComments) toast('💬 ' + r.author + ' 님의 새 피드백'); }
   } else S.comments[i] = r;
   renderComments(); refreshCommentCounts();
 }
