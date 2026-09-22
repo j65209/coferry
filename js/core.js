@@ -10,7 +10,9 @@ const CF = {
   MEMBERS: [
     { id: 'osy', name: '오수영', role: '과장',     color: '#4f46e5' },
     { id: 'psh', name: '박시호', role: '디자이너', color: '#e0508f' },
-    { id: 'ceo', name: '대표',   role: '',         color: '#0ea5e9' }
+    { id: 'jsh', name: '전승훈', role: '대표',     color: '#0ea5e9' },
+    { id: 'jsb', name: '전수빈', role: '대표',     color: '#f97316' },
+    { id: 'ceo', name: '대표',   role: '',         color: '#0ea5e9' }   // 이전 호환 (오피스앱에서 me 미지정 폴백)
   ],
   STATUS: [
     { id: 'todo',     label: '대기',   color: '#8b8a85' },

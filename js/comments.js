@@ -141,7 +141,9 @@ function refreshCommentCounts() {
 }
 
 function applyPanel() {
-  $('#cpanel').classList.toggle('off', !S.showComments);
+  // 피드백칸은 항상 펼침 (2026-09-22 사장님 요청). 토글 버튼이 눌려도 즉시 다시 열림.
+  S.showComments = true;
+  $('#cpanel').classList.remove('off');
   saveUI();
 }
 
