@@ -58,7 +58,9 @@ function renderComments() {
 function commentEl(c) {
   const m = member(c.author);
   const box = document.createElement('div');
-  box.className = 'c-item' + (c.resolved ? ' resolved' : '');
+  // 자기 세션이 남긴 피드백은 우측 accent 버블, 남이 남긴 건 좌측 흰 버블
+  const mine = (c.client_id && c.client_id === S.sid) || (!c.client_id && c.author === S.me);
+  box.className = 'c-item' + (mine ? ' mine' : '') + (c.resolved ? ' resolved' : '');
 
   if (c.block_id && !S.cTarget) {
     const b = S.blocks.find(x => x.id === c.block_id);
@@ -120,7 +122,8 @@ function sendComment() {
   if (!body || !S.pageId) return;
   const c = {
     id: uid(), page_id: S.pageId, block_id: S.cTarget || null,
-    author: S.me, body: body, resolved: false, created_at: nowISO()
+    author: S.me, body: body, resolved: false, created_at: nowISO(),
+    client_id: S.sid                    // 즉시 렌더에서도 '자기 버블' 로 잡히도록 로컬 객체에 미리 심음
   };
   S.comments.push(c);
   Q.up('cof_comments', c);
