@@ -156,6 +156,33 @@ function renderPageHead() {
   chip.onclick = () => openStatusMenu(p, chip);
   meta.appendChild(chip);
 
+  // 📅 날짜 필드 — 설정하면 최하단 캘린더에 자동 등록
+  const dateWrap = document.createElement('label');
+  dateWrap.className = 'page-date' + (p.event_date ? ' set' : '');
+  dateWrap.title = '이 페이지의 일정 · 캘린더에 자동 등록';
+  const dateIc = document.createElement('span'); dateIc.className = 'pd-ic'; dateIc.textContent = '🗓';
+  dateWrap.appendChild(dateIc);
+  const dateInp = document.createElement('input');
+  dateInp.type = 'date'; dateInp.className = 'pd-in';
+  dateInp.value = p.event_date || '';
+  dateInp.onchange = () => {
+    p.event_date = dateInp.value || null;
+    savePage(p, ['event_date']);
+    dateWrap.classList.toggle('set', !!p.event_date);
+    if (dateClear) dateClear.classList.toggle('hidden', !p.event_date);
+  };
+  dateWrap.appendChild(dateInp);
+  const dateClear = document.createElement('button');
+  dateClear.type = 'button'; dateClear.className = 'pd-clear' + (p.event_date ? '' : ' hidden');
+  dateClear.textContent = '✕'; dateClear.title = '일정 지우기';
+  dateClear.onclick = e => {
+    e.preventDefault();
+    p.event_date = null; savePage(p, ['event_date']);
+    dateInp.value = ''; dateWrap.classList.remove('set'); dateClear.classList.add('hidden');
+  };
+  dateWrap.appendChild(dateClear);
+  meta.appendChild(dateWrap);
+
   const info = document.createElement('span');
   const done = S.blocks.filter(b => b.type === 'todo' && b.checked).length;
   const todo = S.blocks.filter(b => b.type === 'todo').length;

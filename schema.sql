@@ -12,13 +12,16 @@ create table if not exists public.cof_pages (
   status      text not null default 'todo',   -- todo | progress | review | done | hold
   sort        double precision not null default 0,
   archived    boolean not null default false,
+  event_date  date,                            -- 페이지에 붙인 일정 · 최하단 캘린더에 자동 등록
   created_by  text,
   updated_by  text,
   created_at  timestamptz not null default now(),
   updated_at  timestamptz not null default now()
 );
-create index if not exists cof_pages_parent_idx on public.cof_pages(parent_id);
-create index if not exists cof_pages_sort_idx   on public.cof_pages(sort);
+alter table public.cof_pages add column if not exists event_date date;
+create index if not exists cof_pages_parent_idx     on public.cof_pages(parent_id);
+create index if not exists cof_pages_sort_idx       on public.cof_pages(sort);
+create index if not exists cof_pages_event_date_idx on public.cof_pages(event_date);
 
 -- 블록 (한 줄 = 한 행. 텍스트가 많아도 저장은 행 단위라 가볍다)
 create table if not exists public.cof_blocks (

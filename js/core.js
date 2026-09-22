@@ -200,8 +200,9 @@ function overlayPending(table, rows, pageId) {
 function savePage(p, fields) {
   p.updated_at = nowISO(); p.updated_by = S.me;
   const row = { id: p.id, updated_at: p.updated_at, updated_by: p.updated_by };
-  (fields || ['parent_id', 'title', 'icon', 'status', 'sort', 'archived']).forEach(f => row[f] = p[f]);
+  (fields || ['parent_id', 'title', 'icon', 'status', 'sort', 'archived', 'event_date']).forEach(f => row[f] = p[f]);
   Q.up('cof_pages', row);
+  if (typeof renderCalendar === 'function') try { renderCalendar(); } catch (e) {}
 }
 function saveBlock(b, fields) {
   b.updated_at = nowISO(); b.updated_by = S.me;

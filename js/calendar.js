@@ -74,6 +74,26 @@ async function loadEvents() {
   renderCalendar();
 }
 
+/* 페이지 날짜 필드 → 가상 이벤트 (S.events 를 건드리지 않고 렌더 시점에 병합) */
+function pageDateEvents() {
+  if (!Array.isArray(S.pages)) return [];
+  return S.pages
+    .filter(p => p && p.event_date && !p.archived)
+    .map(p => ({
+      id: 'page:' + p.id,          // 렌더 key 용, 저장 X
+      event_date: p.event_date,
+      title: (p.icon ? p.icon + ' ' : '') + (p.title || '(제목 없음)'),
+      color: '',
+      source_page_id: p.id,
+      source_block_id: null,
+      _kind: 'page'                // 스타일 분기용
+    }));
+}
+function allEvents() {
+  const base = (S.events || []).filter(e => !e._deleted);
+  return base.concat(pageDateEvents());
+}
+
 /* ===== 렌더 ===== */
 function renderCalendar() {
   const grid = $('#calGrid'); if (!grid) return;
@@ -102,6 +122,7 @@ function renderCalendar() {
     grid.appendChild(c);
   }
 
+  const merged = allEvents();
   for (let d = 1; d <= dim; d++) {
     const dateStr = y + '-' + String(m + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0');
     const dow = new Date(y, m, d).getDay();
@@ -114,15 +135,17 @@ function renderCalendar() {
 
     const n = document.createElement('span'); n.className = 'cal-num'; n.textContent = d; c.appendChild(n);
 
-    const evList = S.events.filter(e => e.event_date === dateStr && !e._deleted);
+    const evList = merged.filter(e => e.event_date === dateStr);
     evList.slice(0, 3).forEach(e => {
       const chip = document.createElement('div');
-      chip.className = 'cal-chip' + (e.source_block_id ? ' auto' : '');
+      chip.className = 'cal-chip'
+        + (e._kind === 'page' ? ' page' : (e.source_block_id ? ' auto' : ''));
       chip.title = e.title || '(제목 없음)';
       chip.textContent = e.title || '(제목 없음)';
       if (e.color) chip.style.background = e.color;
       chip.onclick = ev => {
         ev.stopPropagation();
+        if (e._kind === 'page') { openPage(e.source_page_id); return; }
         S.calSelected = dateStr; renderCalendar(); renderCalDayPanel(e.id);
       };
       c.appendChild(chip);
@@ -173,9 +196,12 @@ function renderCalDayPanel(focusEventId) {
   head.appendChild(add);
   panel.appendChild(head);
 
-  const list = S.events
-    .filter(e => e.event_date === S.calSelected && !e._deleted)
-    .sort((a, b) => (a.source_block_id ? 1 : 0) - (b.source_block_id ? 1 : 0));
+  const list = allEvents()
+    .filter(e => e.event_date === S.calSelected)
+    .sort((a, b) => {
+      const r = k => k._kind === 'page' ? 0 : (k.source_block_id ? 2 : 1);
+      return r(a) - r(b);
+    });
 
   if (!list.length) {
     const empty = document.createElement('div'); empty.className = 'cdp-empty';
@@ -187,6 +213,27 @@ function renderCalDayPanel(focusEventId) {
   list.forEach(e => {
     const row = document.createElement('div'); row.className = 'cdp-row';
     row.dataset.id = e.id;
+
+    if (e._kind === 'page') {
+      const tag = document.createElement('span'); tag.className = 'cdp-tag page'; tag.textContent = '페이지';
+      tag.title = '이 페이지가 일정 날짜로 등록됨';
+      row.appendChild(tag);
+      const t = document.createElement('a'); t.className = 'cdp-title link';
+      t.textContent = e.title || '(제목 없음)';
+      t.onclick = () => { if (e.source_page_id) openPage(e.source_page_id); };
+      row.appendChild(t);
+      const del = document.createElement('button'); del.className = 'cdp-del'; del.textContent = '✕';
+      del.title = '이 페이지의 일정 지우기';
+      del.onclick = () => {
+        const p = pageById(e.source_page_id); if (!p) return;
+        p.event_date = null; savePage(p, ['event_date']);
+        renderCalendar();
+        if (p.id === S.pageId) renderPageHead();
+      };
+      row.appendChild(del);
+      panel.appendChild(row);
+      return;
+    }
 
     if (e.source_block_id) {
       const tag = document.createElement('span'); tag.className = 'cdp-tag auto'; tag.textContent = '자동';
