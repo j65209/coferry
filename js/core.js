@@ -361,9 +361,8 @@ async function pollRemote() {
       sb('cof_pages?select=*&updated_at=gt.' + encodeURIComponent(since) + '&limit=200'),
       typeof onRemoteEvent === 'function'
         ? sb('cof_events?select=*&updated_at=gt.' + encodeURIComponent(since) + '&limit=300') : Promise.resolve([]),
-      S.pageId
-        ? sb('cof_comments?select=*&page_id=eq.' + S.pageId + '&updated_at=gt.' + encodeURIComponent(since) + '&limit=200')
-        : Promise.resolve([])
+      // comments 는 페이지 필터 없이 전역으로 받아 다른 페이지 피드백 알림도 놓치지 않음 (onRemoteComment 안에서 매칭)
+      sb('cof_comments?select=*&updated_at=gt.' + encodeURIComponent(since) + '&limit=200')
     ]);
     (rows || []).forEach(r => onRemoteBlock({ eventType: r.deleted_at ? 'DELETE' : 'UPDATE', new: r, old: r }));
     (pg || []).forEach(r => onRemotePage({ eventType: r.deleted_at ? 'DELETE' : 'UPDATE', new: r, old: r }));
