@@ -221,6 +221,8 @@ const Q = {
       this.lastOk = Date.now(); this.fails = 0;
       badge(this.ops.length ? 'saving' : 'saved');
       if (this.ops.length) this.schedule();
+      // 내 write 가 서버에 안착한 직후 즉시 poll → pending 필터로 무시되던 상대 편집을 지연 없이 반영
+      if (typeof pollRemote === 'function') setTimeout(pollRemote, 60);
     } catch (e) {
       this.fails++;
       badge('fail');
@@ -313,7 +315,7 @@ function showWho() {
 }
 
 /* ===== 실시간 (supabase-js lazy) + 폴링 백업 ===== */
-let _rt = null, _lastPull = new Date(Date.now() - 60000).toISOString();
+let _rt = null, _lastPull = nowISO(), _pollBusy = false;
 async function loadSupaJs() {
   if (window.supabase && window.supabase.channel) return true;
   return new Promise(res => {
@@ -348,18 +350,28 @@ async function realtimeInit() {
 }
 async function pollRemote() {
   if (document.hidden) return;
+  if (_pollBusy) return;                            // 중복 poll 방지 (flush→poll + interval poll 겹침)
+  _pollBusy = true;
+  const since = _lastPull;
+  const reqAt = nowISO();                           // 요청 순간 (성공 시 이 값으로 갱신 → race 유실 방지)
   try {
-    const since = _lastPull; _lastPull = nowISO();
-    // soft-delete 반영을 위해 alive 필터 걸지 않고 전체를 받아, deleted_at 있으면 삭제 이벤트로 처리
-    const rows = await sb('cof_blocks?select=*&updated_at=gt.' + encodeURIComponent(since) + '&limit=300');
+    // soft-delete 반영을 위해 alive 필터 안 걸고 전체 받아 deleted_at 있으면 삭제로 처리
+    const [rows, pg, ev, cm] = await Promise.all([
+      sb('cof_blocks?select=*&updated_at=gt.' + encodeURIComponent(since) + '&limit=300'),
+      sb('cof_pages?select=*&updated_at=gt.' + encodeURIComponent(since) + '&limit=200'),
+      typeof onRemoteEvent === 'function'
+        ? sb('cof_events?select=*&updated_at=gt.' + encodeURIComponent(since) + '&limit=300') : Promise.resolve([]),
+      S.pageId
+        ? sb('cof_comments?select=*&page_id=eq.' + S.pageId + '&updated_at=gt.' + encodeURIComponent(since) + '&limit=200')
+        : Promise.resolve([])
+    ]);
     (rows || []).forEach(r => onRemoteBlock({ eventType: r.deleted_at ? 'DELETE' : 'UPDATE', new: r, old: r }));
-    const pg = await sb('cof_pages?select=*&updated_at=gt.' + encodeURIComponent(since) + '&limit=200');
     (pg || []).forEach(r => onRemotePage({ eventType: r.deleted_at ? 'DELETE' : 'UPDATE', new: r, old: r }));
-    if (typeof onRemoteEvent === 'function') {
-      const ev = await sb('cof_events?select=*&updated_at=gt.' + encodeURIComponent(since) + '&limit=300');
-      (ev || []).forEach(r => onRemoteEvent({ eventType: r.deleted_at ? 'DELETE' : 'UPDATE', new: r, old: r }));
-    }
-  } catch (e) { /* 네트워크 일시 문제 무시 */ }
+    (ev || []).forEach(r => onRemoteEvent({ eventType: r.deleted_at ? 'DELETE' : 'UPDATE', new: r, old: r }));
+    (cm || []).forEach(r => onRemoteComment({ eventType: r.deleted_at ? 'DELETE' : 'UPDATE', new: r, old: r }));
+    _lastPull = reqAt;                              // 성공했을 때만 커서 전진 (실패 시 다음 poll 에서 재시도)
+  } catch (e) { /* 네트워크 일시 문제 무시 · _lastPull 유지 */ }
+  finally { _pollBusy = false; }
 }
 function renderPresence() {
   const el = $('#presence'); if (!el) return;
@@ -371,10 +383,14 @@ function renderPresence() {
   });
 }
 
-/* ===== 종료 시 강제 flush ===== */
-window.addEventListener('visibilitychange', () => { if (document.hidden) Q.flush(true); });
+/* ===== 종료 시 강제 flush + 탭 복귀 · 네트워크 복귀 시 즉시 catch-up ===== */
+window.addEventListener('visibilitychange', () => {
+  if (document.hidden) Q.flush(true);
+  else { Q.flush(); if (typeof pollRemote === 'function') pollRemote(); }
+});
+window.addEventListener('focus', () => { if (typeof pollRemote === 'function') pollRemote(); });
 window.addEventListener('pagehide', () => Q.flush(true));
 window.addEventListener('beforeunload', e => {
   if (Q.ops.length) { Q.flush(true); e.preventDefault(); e.returnValue = ''; }
 });
-window.addEventListener('online', () => Q.flush());
+window.addEventListener('online', () => { Q.flush(); if (typeof pollRemote === 'function') pollRemote(); });
