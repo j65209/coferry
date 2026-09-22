@@ -174,7 +174,17 @@ function imageNode(b) {
   dl.onclick = e => { e.stopPropagation(); window.open(dlUrl(b.meta), '_blank', 'noopener'); };
   tools.appendChild(dl);
   const del = document.createElement('button'); del.className = 'tbtn'; del.textContent = '🗑';
-  del.onclick = e => { e.stopPropagation(); removeBlock(b.id); };
+  del.onclick = e => {
+    e.stopPropagation();
+    const snap = Object.assign({}, b), idx = blockIndex(b.id);
+    removeBlock(b.id);
+    toast('이미지 삭제 · 5초 안에 되돌릴 수 있어요', '되돌리기', () => {
+      delTomb(snap.id);
+      S.blocks.splice(idx, 0, snap);
+      Q.up('cof_blocks', Object.assign({}, snap, { deleted_at: null, updated_at: nowISO(), updated_by: S.me }));
+      renderEditorKeepFocus(snap.id);
+    }, 5000);
+  };
   tools.appendChild(del);
   box.appendChild(tools);
 
@@ -234,7 +244,17 @@ function fileNode(b) {
   dl.onclick = e => { e.preventDefault(); window.open(dlUrl(b.meta), '_blank', 'noopener'); };
   a.appendChild(dl);
   const del = document.createElement('button'); del.className = 'tbtn'; del.textContent = '🗑';
-  del.onclick = e => { e.preventDefault(); removeBlock(b.id); };
+  del.onclick = e => {
+    e.preventDefault();
+    const snap = Object.assign({}, b), idx = blockIndex(b.id);
+    removeBlock(b.id);
+    toast('파일 삭제 · 5초 안에 되돌릴 수 있어요', '되돌리기', () => {
+      delTomb(snap.id);
+      S.blocks.splice(idx, 0, snap);
+      Q.up('cof_blocks', Object.assign({}, snap, { deleted_at: null, updated_at: nowISO(), updated_by: S.me }));
+      renderEditorKeepFocus(snap.id);
+    }, 5000);
+  };
   a.appendChild(del);
   wrap.appendChild(a);
 
@@ -325,7 +345,7 @@ async function showFiles() {
   sub.textContent = '지금까지 올린 이미지 · PDF · 엑셀 · 문서'; v.appendChild(sub);
 
   let rows = [];
-  try { rows = await sb('cof_files?select=*&order=created_at.desc&limit=400') || []; }
+  try { rows = await sb('cof_files?select=*' + ALIVE + '&order=created_at.desc&limit=400') || []; }
   catch (e) { toast('파일 목록을 불러오지 못했습니다'); }
   if (!rows.length) { const e2 = document.createElement('div'); e2.className = 'c-empty'; e2.textContent = '아직 올린 파일이 없습니다'; v.appendChild(e2); return; }
 
