@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=5">
 <title>coferry design center</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎨</text></svg>">
-<link rel="stylesheet" href="style.css?v=15">
+<link rel="stylesheet" href="style.css?v=16">
 </head>
 <body>
 
@@ -97,6 +97,21 @@
 
       <div id="filesView" class="files-view hidden"></div>
       <div id="archiveView" class="files-view hidden"></div>
+
+      <!-- ===== 최하단 캘린더 ===== -->
+      <section id="calendarSection" class="cal-section">
+        <div class="cal-head">
+          <span class="cal-badge">🗓 캘린더</span>
+          <button class="cal-nav" id="calPrev" title="이전 달">‹</button>
+          <div class="cal-title" id="calTitle">—</div>
+          <button class="cal-nav" id="calNext" title="다음 달">›</button>
+          <button class="cal-today" id="calToday">오늘</button>
+          <span class="cal-hint">본문에 <b>9/25</b> · <b>9월 25일</b> · <b>2026-09-25</b> 를 적으면 자동으로 이 달력에 올라와요.</span>
+          <button class="cal-toggle" id="calToggle" title="접기/펼치기">접기 ▴</button>
+        </div>
+        <div class="cal-grid" id="calGrid"></div>
+        <div class="cal-day-panel empty" id="calDayPanel"></div>
+      </section>
     </main>
     <div id="dropHint" class="drop-hint">여기에 놓으면 업로드됩니다</div>
 
@@ -131,11 +146,12 @@
 
 <input type="file" id="filePicker" multiple hidden>
 
-<script src="js/core.js?v=15"></script>
-<script src="js/pages.js?v=15"></script>
-<script src="js/editor.js?v=15"></script>
-<script src="js/files.js?v=15"></script>
-<script src="js/comments.js?v=15"></script>
-<script src="js/boot.js?v=15"></script>
+<script src="js/core.js?v=16"></script>
+<script src="js/pages.js?v=16"></script>
+<script src="js/editor.js?v=16"></script>
+<script src="js/files.js?v=16"></script>
+<script src="js/comments.js?v=16"></script>
+<script src="js/calendar.js?v=16"></script>
+<script src="js/boot.js?v=16"></script>
 </body>
 </html>

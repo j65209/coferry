@@ -110,6 +110,12 @@ async function boot() {
   applyLogo();
   renderFilter(); renderTree();
 
+  bindCalendar();
+  const collapsed = !!(ui && ui.calCollapsed);
+  const sec = $('#calendarSection');
+  if (sec && collapsed) { sec.classList.add('collapsed'); const t = $('#calToggle'); if (t) t.textContent = '펼치기 ▾'; }
+  loadEvents();
+
   const last = lsGet(K.last);
   if (last && pageById(last) && !pageById(last).archived) openPage(last);
   else if (childrenOf(null)[0]) openPage(childrenOf(null)[0].id);

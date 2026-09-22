@@ -208,6 +208,7 @@ function saveBlock(b, fields) {
   const row = { id: b.id, page_id: b.page_id, updated_at: b.updated_at, updated_by: b.updated_by };
   (fields || ['type', 'content', 'checked', 'size', 'indent', 'meta', 'sort']).forEach(f => row[f] = b[f]);
   Q.up('cof_blocks', row);
+  if (typeof syncBlockEvents === 'function') try { syncBlockEvents(b); } catch (e) {}
 }
 
 /* ===== 인증 ===== */
@@ -277,6 +278,9 @@ async function realtimeInit() {
     .on('postgres_changes', { event: '*', schema: 'public', table: 'cof_pages' }, p => onRemotePage(p))
     .on('postgres_changes', { event: '*', schema: 'public', table: 'cof_comments' }, p => onRemoteComment(p))
     .on('postgres_changes', { event: '*', schema: 'public', table: 'cof_settings' }, p => onRemoteSetting(p))
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'cof_events' }, p => {
+      if (typeof onRemoteEvent === 'function') onRemoteEvent(p);
+    })
     .on('presence', { event: 'sync' }, () => {
       const st = _rt.presenceState(); const names = [];
       Object.values(st).forEach(arr => arr.forEach(x => { if (x.name && names.indexOf(x.name) < 0) names.push(x.name); }));
@@ -293,6 +297,10 @@ async function pollRemote() {
     (rows || []).forEach(r => onRemoteBlock({ eventType: 'UPDATE', new: r }));
     const pg = await sb('cof_pages?select=*&updated_at=gt.' + encodeURIComponent(since) + '&limit=200');
     (pg || []).forEach(r => onRemotePage({ eventType: 'UPDATE', new: r }));
+    if (typeof onRemoteEvent === 'function') {
+      const ev = await sb('cof_events?select=*&updated_at=gt.' + encodeURIComponent(since) + '&limit=300');
+      (ev || []).forEach(r => onRemoteEvent({ eventType: 'UPDATE', new: r }));
+    }
   } catch (e) { /* 네트워크 일시 문제 무시 */ }
 }
 function renderPresence() {

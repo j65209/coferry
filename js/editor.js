@@ -227,6 +227,7 @@ function removeBlock(id) {
   const row = $('#editor').querySelector('.blk[data-id="' + id + '"]');
   if (row) row.remove();
   renderPageHead();
+  if (typeof removeAutoEventsForBlock === 'function') try { removeAutoEventsForBlock(id); } catch (e) {}
 }
 function changeType(b, t) {
   b.type = t;
@@ -354,6 +355,7 @@ function onRemoteBlock(payload) {
   if (payload.eventType === 'DELETE') {
     const i = blockIndex(r.id);
     if (i >= 0) { S.blocks.splice(i, 1); const row = $('#editor').querySelector('.blk[data-id="' + r.id + '"]'); if (row) row.remove(); }
+    if (typeof removeAutoEventsForBlock === 'function') try { removeAutoEventsForBlock(r.id); } catch (e) {}
     return;
   }
   if (r.updated_by === S.me) return;
@@ -383,6 +385,7 @@ function onRemoteBlock(payload) {
   }
   flash(r.id);
   renderPageHead();
+  if (typeof syncBlockEvents === 'function') try { syncBlockEvents(r); } catch (e) {}
 }
 function flash(id) {
   const row = $('#editor').querySelector('.blk[data-id="' + id + '"]');

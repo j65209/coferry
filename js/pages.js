@@ -135,6 +135,7 @@ async function openPage(id, focusTitle) {
   renderEditor(true);
   renderPageHead();                       // 블록 로드 후 ✅ N/M 카운터 최신화
   loadComments(id);
+  if (typeof syncCurrentPageEvents === 'function') try { syncCurrentPageEvents(); } catch (e) {}
   if (focusTitle) setTimeout(() => { const t = $('#pageTitle'); t.focus(); }, 40);
 }
 
@@ -196,7 +197,10 @@ async function deletePage(p) {
   try {
     await sb('cof_blocks?page_id=eq.' + p.id, { method: 'DELETE' });
     await sb('cof_comments?page_id=eq.' + p.id, { method: 'DELETE' });
+    await sb('cof_events?source_page_id=eq.' + p.id, { method: 'DELETE' });
   } catch (e) { /* 로컬 삭제는 이어서 진행 */ }
+  if (Array.isArray(S.events)) S.events = S.events.filter(e => e.source_page_id !== p.id);
+  if (typeof renderCalendar === 'function') renderCalendar();
   Q.del('cof_pages', p.id);
   if (S.pageId === p.id) { S.pageId = null; $('#pageWrap').classList.add('hidden'); $('#emptyState').classList.remove('hidden'); }
   renderTree();

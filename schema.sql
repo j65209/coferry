@@ -70,17 +70,34 @@ create table if not exists public.cof_settings (
   updated_at timestamptz not null default now()
 );
 
+-- 캘린더 이벤트 (최하단 캘린더)
+-- source_block_id 있으면 블록 자동 감지 이벤트(읽기 전용), 없으면 수동 이벤트
+create table if not exists public.cof_events (
+  id              uuid primary key default gen_random_uuid(),
+  event_date      date not null,
+  title           text not null default '',
+  color           text not null default '',
+  source_page_id  uuid,
+  source_block_id uuid,
+  updated_by      text,
+  updated_at      timestamptz not null default now(),
+  created_at      timestamptz not null default now()
+);
+create index if not exists cof_events_date_idx  on public.cof_events(event_date);
+create index if not exists cof_events_block_idx on public.cof_events(source_block_id);
+
 -- RLS: 사내 전용 도구 — anon 전체 허용
 alter table public.cof_pages    enable row level security;
 alter table public.cof_blocks   enable row level security;
 alter table public.cof_comments enable row level security;
 alter table public.cof_files    enable row level security;
 alter table public.cof_settings enable row level security;
+alter table public.cof_events   enable row level security;
 
 do $$
 declare t text;
 begin
-  foreach t in array array['cof_pages','cof_blocks','cof_comments','cof_files','cof_settings'] loop
+  foreach t in array array['cof_pages','cof_blocks','cof_comments','cof_files','cof_settings','cof_events'] loop
     execute format('drop policy if exists %I on public.%I', t||'_anon_all', t);
     execute format(
       'create policy %I on public.%I for all to anon, authenticated using (true) with check (true)',
@@ -94,6 +111,7 @@ alter publication supabase_realtime add table public.cof_blocks;
 alter publication supabase_realtime add table public.cof_comments;
 alter publication supabase_realtime add table public.cof_files;
 alter publication supabase_realtime add table public.cof_settings;
+alter publication supabase_realtime add table public.cof_events;
 
 -- Storage 버킷 (이미지 / PDF / 엑셀)
 insert into storage.buckets (id, name, public, file_size_limit)
