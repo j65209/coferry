@@ -30,9 +30,6 @@ function renderMe() {
 function bindTop() {
   $('#fsUp').onclick   = () => { S.fs = Math.min(190, S.fs + 10); applyFS(); saveUI(); };
   $('#fsDown').onclick = () => { S.fs = Math.max(70,  S.fs - 10); applyFS(); saveUI(); };
-  $('#btnComments').onclick = () => { S.showComments = !S.showComments; applyPanel(); };
-  $('#btnCloseComments').onclick = () => { S.showComments = false; applyPanel(); };
-  $('#showResolved').onchange = e => { S.showResolved = e.target.checked; renderComments(); };
   $('#btnNewPage').onclick = () => newPage(null);
   $('#btnFiles').onclick = showFiles;
   $('#btnArchive').onclick = showArchive;
@@ -42,13 +39,6 @@ function bindTop() {
     else { S.sideOpen = !S.sideOpen; applySide(); saveUI(); }
   };
   $('#btnPick').onclick = () => pickFiles(null);
-
-  const cbox = $('#cBox');
-  cbox.addEventListener('input', () => autoGrow(cbox));
-  cbox.addEventListener('keydown', e => {
-    if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); sendComment(); }
-  });
-  $('#cSend').onclick = sendComment;
 
   document.addEventListener('keydown', e => {
     if ((e.metaKey || e.ctrlKey) && e.key === 's') { e.preventDefault(); Q.flush(); toast('저장했습니다'); }
@@ -86,9 +76,8 @@ async function boot() {
   const ui = lsGet(K.ui, {});
   S.fs = ui.fs || 100; S.theme = 'light';
   S.filter = ui.filter || 'all';
-  S.showComments = ui.showComments !== false;
   S.sideOpen = ui.sideOpen !== false;
-  applyFS(); applyTheme(); applyPanel(); applySide(); renderMe();
+  applyFS(); applyTheme(); applySide(); renderMe();
 
   $('#app').classList.remove('hidden');
   bindTop(); bindPageHead(); bindSearch(); bindDrop(); bindLogo();

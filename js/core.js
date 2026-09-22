@@ -33,10 +33,10 @@ const ALIVE = '&deleted_at=is.null';
 
 /* ===== 상태 ===== */
 const S = {
-  me: null, pages: [], pageId: null, blocks: [], comments: [],
+  me: null, pages: [], pageId: null, blocks: [],
   settings: {}, filter: 'all', view: 'page',
-  fs: 100, theme: 'light', showComments: true, showResolved: false, sideOpen: true,
-  cTarget: null, online: [], booted: false,
+  fs: 100, theme: 'light', sideOpen: true,
+  online: [], booted: false,
   // 이 브라우저 탭의 세션 ID. onRemote 에서 자기 UPDATE 이벤트만 정확히 걸러내려고 사용.
   // 이름(updated_by) 이 겹쳐도 (대표 2인, 게스트 등) 서로의 편집이 잘 보인다.
   sid: (crypto.randomUUID ? crypto.randomUUID() : (Date.now() + '-' + Math.random().toString(36).slice(2))).slice(0, 22)
@@ -151,7 +151,7 @@ window.cofRestoreFromServer = async function (entity, id) {
   if (!rows || !rows.length) { console.warn('서버 이력 없음'); return; }
   const snap = rows[0].snapshot;
   const row = Object.assign({}, snap, { deleted_at: null, updated_at: nowISO(), updated_by: S.me });
-  delTomb(id); Q.up(entity === 'pages' ? 'cof_pages' : entity === 'blocks' ? 'cof_blocks' : entity === 'comments' ? 'cof_comments' : 'cof_events', row);
+  delTomb(id); Q.up(entity === 'pages' ? 'cof_pages' : entity === 'blocks' ? 'cof_blocks' : 'cof_events', row);
   console.log('[coferry] 서버 스냅샷으로 복원 예약:', entity, id);
 };
 
@@ -335,7 +335,6 @@ async function realtimeInit() {
   _rt = window.supabase.channel('coferry-live', { config: { presence: { key: S.me + '-' + Math.random().toString(36).slice(2, 6) } } })
     .on('postgres_changes', { event: '*', schema: 'public', table: 'cof_blocks' }, p => onRemoteBlock(p))
     .on('postgres_changes', { event: '*', schema: 'public', table: 'cof_pages' }, p => onRemotePage(p))
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'cof_comments' }, p => onRemoteComment(p))
     .on('postgres_changes', { event: '*', schema: 'public', table: 'cof_settings' }, p => onRemoteSetting(p))
     .on('postgres_changes', { event: '*', schema: 'public', table: 'cof_events' }, p => {
       if (typeof onRemoteEvent === 'function') onRemoteEvent(p);
@@ -356,18 +355,15 @@ async function pollRemote() {
   const reqAt = nowISO();                           // 요청 순간 (성공 시 이 값으로 갱신 → race 유실 방지)
   try {
     // soft-delete 반영을 위해 alive 필터 안 걸고 전체 받아 deleted_at 있으면 삭제로 처리
-    const [rows, pg, ev, cm] = await Promise.all([
+    const [rows, pg, ev] = await Promise.all([
       sb('cof_blocks?select=*&updated_at=gt.' + encodeURIComponent(since) + '&limit=300'),
       sb('cof_pages?select=*&updated_at=gt.' + encodeURIComponent(since) + '&limit=200'),
       typeof onRemoteEvent === 'function'
-        ? sb('cof_events?select=*&updated_at=gt.' + encodeURIComponent(since) + '&limit=300') : Promise.resolve([]),
-      // comments 는 페이지 필터 없이 전역으로 받아 다른 페이지 피드백 알림도 놓치지 않음 (onRemoteComment 안에서 매칭)
-      sb('cof_comments?select=*&updated_at=gt.' + encodeURIComponent(since) + '&limit=200')
+        ? sb('cof_events?select=*&updated_at=gt.' + encodeURIComponent(since) + '&limit=300') : Promise.resolve([])
     ]);
     (rows || []).forEach(r => onRemoteBlock({ eventType: r.deleted_at ? 'DELETE' : 'UPDATE', new: r, old: r }));
     (pg || []).forEach(r => onRemotePage({ eventType: r.deleted_at ? 'DELETE' : 'UPDATE', new: r, old: r }));
     (ev || []).forEach(r => onRemoteEvent({ eventType: r.deleted_at ? 'DELETE' : 'UPDATE', new: r, old: r }));
-    (cm || []).forEach(r => onRemoteComment({ eventType: r.deleted_at ? 'DELETE' : 'UPDATE', new: r, old: r }));
     _lastPull = reqAt;                              // 성공했을 때만 커서 전진 (실패 시 다음 poll 에서 재시도)
   } catch (e) { /* 네트워크 일시 문제 무시 · _lastPull 유지 */ }
   finally { _pollBusy = false; }

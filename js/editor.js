@@ -43,7 +43,6 @@ function renderEditor(force) {
   const ed = $('#editor'); ed.textContent = '';
   S.blocks.sort((a, b) => (a.sort || 0) - (b.sort || 0));
   S.blocks.forEach(b => ed.appendChild(blockEl(b)));
-  refreshCommentCounts();
 }
 document.addEventListener('focusout', () => {
   setTimeout(() => { if (_renderPending && !editorFocused()) renderEditor(); }, 120);
@@ -96,15 +95,7 @@ function blockEl(b) {
   c.textContent = b.content || '';
   bindEditable(c, b);
   row.appendChild(c);
-  row.appendChild(cbtn(b));
   return row;
-}
-function cbtn(b) {
-  const btn = document.createElement('button');
-  btn.className = 'blk-cbtn'; btn.dataset.cfor = b.id;
-  btn.textContent = '💬'; btn.title = '이 줄에 피드백';
-  btn.onclick = () => startComment(b);
-  return btn;
 }
 
 /* ===== 편집 바인딩 ===== */
@@ -257,7 +248,6 @@ function renderEditorKeepFocus(focusId, pos) {
   const ed = $('#editor'); ed.textContent = '';
   S.blocks.sort((a, b) => (a.sort || 0) - (b.sort || 0));
   S.blocks.forEach(b => ed.appendChild(blockEl(b)));
-  refreshCommentCounts();
   if (focusId) focusBlock(focusId, pos || 'end');
 }
 function focusBlock(id, pos) {
@@ -330,7 +320,6 @@ function openBlockMenu(b, rect) {
     add('🔠', '글자 크게', b.size === 'lg' ? '현재' : '', () => { b.size = 'lg'; saveBlock(b, ['size']); renderEditorKeepFocus(b.id); });
     const sep2 = document.createElement('div'); sep2.className = 'sep'; box.appendChild(sep2);
   }
-  add('💬', '피드백 달기', '', () => startComment(b));
   add('⬆️', '위로 이동', '⌘⇧↑', () => moveBlock(b, -1));
   add('⬇️', '아래로 이동', '⌘⇧↓', () => moveBlock(b, 1));
   add('🗑', '삭제', '', () => {

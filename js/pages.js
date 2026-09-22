@@ -92,7 +92,7 @@ function renderTree() {
 
 function saveUI() {
   const u = lsGet(K.ui, {});
-  u.filter = S.filter; u.fs = S.fs; u.showComments = S.showComments; u.sideOpen = S.sideOpen;
+  u.filter = S.filter; u.fs = S.fs; u.sideOpen = S.sideOpen;
   lsSet(K.ui, u);
 }
 
@@ -112,7 +112,7 @@ function newPage(parentId) {
 
 async function openPage(id, focusTitle) {
   const p = pageById(id); if (!p) return;
-  S.pageId = id; S.view = 'page'; S.cTarget = null;
+  S.pageId = id; S.view = 'page';
   lsSet(K.last, id);
   $('#emptyState').classList.add('hidden');
   $('#filesView').classList.add('hidden');
@@ -134,7 +134,6 @@ async function openPage(id, focusTitle) {
   if (!S.blocks.length) S.blocks = [makeBlock(id, 'text', 1000)];
   renderEditor(true);
   renderPageHead();                       // 블록 로드 후 ✅ N/M 카운터 최신화
-  loadComments(id);
   if (typeof syncCurrentPageEvents === 'function') try { syncCurrentPageEvents(); } catch (e) {}
   if (focusTitle) setTimeout(() => { const t = $('#pageTitle'); t.focus(); }, 40);
 }
@@ -220,7 +219,7 @@ function archivePage(p) {
 
 async function deletePage(p) {
   // soft delete — deleted_at 만 세팅. cof_history 트리거가 스냅샷 자동 보관.
-  // 되돌리기 5초 유예 (Undo 스낵바). 블록·피드백은 pages.id 참조라 페이지가 살면 자동 복원.
+  // 되돌리기 5초 유예 (Undo 스낵바). 블록은 pages.id 참조라 페이지가 살면 자동 복원.
   const snap = Object.assign({}, p);
   const wasPage = S.pageId === p.id;
   S.pages = S.pages.filter(x => x.id !== p.id);
@@ -360,12 +359,11 @@ function showArchive() {
     row.appendChild(r);
     const d = document.createElement('button'); d.textContent = '완전삭제';
     d.onclick = async () => {
-      if (!confirm('"' + (p.title || '제목 없음') + '" 을(를) 블록·피드백까지 완전히 지울까요?\n(cof_history 이력만 남고 실제 행은 삭제됩니다)')) return;
+      if (!confirm('"' + (p.title || '제목 없음') + '" 을(를) 블록까지 완전히 지울까요?\n(cof_history 이력만 남고 실제 행은 삭제됩니다)')) return;
       const snap = Object.assign({}, p);
       S.pages = S.pages.filter(x => x.id !== p.id);
       try {
         await sb('cof_blocks?page_id=eq.' + p.id, { method: 'DELETE' });
-        await sb('cof_comments?page_id=eq.' + p.id, { method: 'DELETE' });
       } catch (e) {}
       Q.hardDel('cof_pages', p.id, snap);
       renderTree(); showArchive();
