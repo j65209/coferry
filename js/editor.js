@@ -223,7 +223,7 @@ function removeBlock(id) {
   const i = blockIndex(id); if (i < 0) return;
   const b = S.blocks[i];
   S.blocks.splice(i, 1);
-  Q.del('cof_blocks', id);
+  Q.del('cof_blocks', id, Object.assign({}, b));    // snap 넘겨서 rolling history 남김
   const row = $('#editor').querySelector('.blk[data-id="' + id + '"]');
   if (row) row.remove();
   renderPageHead();
@@ -336,11 +336,13 @@ function openBlockMenu(b, rect) {
   add('🗑', '삭제', '', () => {
     const snap = Object.assign({}, b), idx = blockIndex(b.id);
     removeBlock(b.id);
-    toast('블록 삭제', '되돌리기', () => {
-      delete tombs()[snap.id];
-      const t = lsGet(K.tomb, {}); delete t[snap.id]; lsSet(K.tomb, t);
-      S.blocks.splice(idx, 0, snap); Q.up('cof_blocks', snap); renderEditorKeepFocus(snap.id);
-    });
+    toast('블록 삭제 · 5초 안에 되돌릴 수 있어요', '되돌리기', () => {
+      delTomb(snap.id);
+      const row = Object.assign({}, snap, { deleted_at: null, updated_at: nowISO(), updated_by: S.me });
+      S.blocks.splice(idx, 0, snap);
+      Q.up('cof_blocks', row);
+      renderEditorKeepFocus(snap.id);
+    }, 5000);
   });
   popAt(box, rect);
 }
@@ -352,7 +354,7 @@ function onRemoteBlock(payload) {
   if (isTomb(r.id)) return;
   if (Q.pendingIds().has(r.id)) return;               // 내 미저장 편집 보호
 
-  if (payload.eventType === 'DELETE') {
+  if (payload.eventType === 'DELETE' || r.deleted_at) {
     const i = blockIndex(r.id);
     if (i >= 0) { S.blocks.splice(i, 1); const row = $('#editor').querySelector('.blk[data-id="' + r.id + '"]'); if (row) row.remove(); }
     if (typeof removeAutoEventsForBlock === 'function') try { removeAutoEventsForBlock(r.id); } catch (e) {}

@@ -98,7 +98,7 @@ async function boot() {
 
   try {
     const [pages, settings] = await Promise.all([
-      sb('cof_pages?select=*&order=sort.asc&limit=1000'),
+      sb('cof_pages?select=*' + ALIVE + '&order=sort.asc&limit=1000'),
       sb('cof_settings?select=*')
     ]);
     S.pages = overlayPending('cof_pages', (pages || []).filter(p => !isTomb(p.id)));

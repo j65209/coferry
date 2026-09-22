@@ -4,7 +4,7 @@
 async function loadComments(pageId) {
   let rows = null;
   try {
-    rows = await sb('cof_comments?select=*&page_id=eq.' + pageId + '&order=created_at.asc&limit=800');
+    rows = await sb('cof_comments?select=*&page_id=eq.' + pageId + ALIVE + '&order=created_at.asc&limit=800');
   } catch (e) { /* 아래에서 빈 목록 처리 */ }
   if (S.pageId !== pageId) return;           // 늦게 도착한 이전 페이지 응답 무시
   S.comments = overlayPending('cof_comments', (rows || []).filter(c => !isTomb(c.id)), pageId)
@@ -97,9 +97,16 @@ function commentEl(c) {
   if (c.author === S.me) {
     const dl = document.createElement('button'); dl.textContent = '삭제';
     dl.onclick = () => {
+      const snap = Object.assign({}, c);
       S.comments = S.comments.filter(x => x.id !== c.id);
-      Q.del('cof_comments', c.id);
+      Q.del('cof_comments', c.id, snap);
       renderComments(); refreshCommentCounts();
+      toast('피드백 삭제 · 5초 안에 되돌릴 수 있어요', '되돌리기', () => {
+        delTomb(snap.id);
+        S.comments.push(Object.assign({}, snap));
+        Q.up('cof_comments', Object.assign({}, snap, { deleted_at: null, updated_at: nowISO() }));
+        renderComments(); refreshCommentCounts();
+      }, 5000);
     };
     acts.appendChild(dl);
   }
@@ -141,7 +148,7 @@ function applyPanel() {
 /* ===== 원격 ===== */
 function onRemoteComment(payload) {
   const r = payload.new || payload.old; if (!r) return;
-  if (payload.eventType === 'DELETE') { S.comments = S.comments.filter(c => c.id !== r.id); renderComments(); refreshCommentCounts(); return; }
+  if (payload.eventType === 'DELETE' || r.deleted_at) { S.comments = S.comments.filter(c => c.id !== r.id); renderComments(); refreshCommentCounts(); return; }
   if (isTomb(r.id)) return;
   if (r.page_id !== S.pageId) {
     if (r.author !== S.me && payload.eventType === 'INSERT') notify(r);

@@ -125,7 +125,7 @@ async function openPage(id, focusTitle) {
   $('#editor').textContent = '';
   let rows = null;
   try {
-    rows = await sb('cof_blocks?select=*&page_id=eq.' + id + '&order=sort.asc&limit=3000');
+    rows = await sb('cof_blocks?select=*&page_id=eq.' + id + ALIVE + '&order=sort.asc&limit=3000');
   } catch (e) { toast('블록을 불러오지 못했습니다'); }
   if (S.pageId !== id) return;              // 그 사이 다른 페이지로 옮겼으면 버린다
   S.blocks = overlayPending('cof_blocks', (rows || []).filter(b => !isTomb(b.id)), id)
@@ -219,19 +219,25 @@ function archivePage(p) {
 }
 
 async function deletePage(p) {
-  if (!confirm('"' + (p.title || '제목 없음') + '" 을(를) 블록 · 피드백까지 완전히 지울까요?\n(되돌릴 수 없습니다)')) return;
+  // soft delete — deleted_at 만 세팅. cof_history 트리거가 스냅샷 자동 보관.
+  // 되돌리기 5초 유예 (Undo 스낵바). 블록·피드백은 pages.id 참조라 페이지가 살면 자동 복원.
+  const snap = Object.assign({}, p);
+  const wasPage = S.pageId === p.id;
   S.pages = S.pages.filter(x => x.id !== p.id);
-  try {
-    await sb('cof_blocks?page_id=eq.' + p.id, { method: 'DELETE' });
-    await sb('cof_comments?page_id=eq.' + p.id, { method: 'DELETE' });
-    await sb('cof_events?source_page_id=eq.' + p.id, { method: 'DELETE' });
-  } catch (e) { /* 로컬 삭제는 이어서 진행 */ }
   if (Array.isArray(S.events)) S.events = S.events.filter(e => e.source_page_id !== p.id);
   if (typeof renderCalendar === 'function') renderCalendar();
-  Q.del('cof_pages', p.id);
-  if (S.pageId === p.id) { S.pageId = null; $('#pageWrap').classList.add('hidden'); $('#emptyState').classList.remove('hidden'); }
+  Q.del('cof_pages', p.id, snap);
+  if (wasPage) { S.pageId = null; $('#pageWrap').classList.add('hidden'); $('#emptyState').classList.remove('hidden'); }
   renderTree();
-  toast('"' + (p.title || '제목 없음') + '" 완전 삭제됨');
+  toast('"' + (p.title || '제목 없음') + '" 삭제됨 · 5초 안에 되돌릴 수 있어요', '되돌리기', () => {
+    delTomb(p.id);
+    const row = Object.assign({}, snap, { deleted_at: null, updated_at: nowISO(), updated_by: S.me });
+    Q.up('cof_pages', row);
+    S.pages.push(Object.assign({}, snap, { deleted_at: null }));
+    renderTree();
+    if (typeof renderCalendar === 'function') renderCalendar();
+    toast('페이지 복원됨');
+  }, 5000);
 }
 
 /* ===== 제목 / 아이콘 ===== */
@@ -354,13 +360,14 @@ function showArchive() {
     row.appendChild(r);
     const d = document.createElement('button'); d.textContent = '완전삭제';
     d.onclick = async () => {
-      if (!confirm('"' + (p.title || '제목 없음') + '" 을(를) 블록·피드백까지 완전히 지울까요?')) return;
+      if (!confirm('"' + (p.title || '제목 없음') + '" 을(를) 블록·피드백까지 완전히 지울까요?\n(cof_history 이력만 남고 실제 행은 삭제됩니다)')) return;
+      const snap = Object.assign({}, p);
       S.pages = S.pages.filter(x => x.id !== p.id);
       try {
         await sb('cof_blocks?page_id=eq.' + p.id, { method: 'DELETE' });
         await sb('cof_comments?page_id=eq.' + p.id, { method: 'DELETE' });
       } catch (e) {}
-      Q.del('cof_pages', p.id);
+      Q.hardDel('cof_pages', p.id, snap);
       renderTree(); showArchive();
     };
     row.appendChild(d);
@@ -371,7 +378,7 @@ function showArchive() {
 /* ===== 원격 반영 ===== */
 function onRemotePage(payload) {
   const r = payload.new || payload.old; if (!r) return;
-  if (payload.eventType === 'DELETE') { S.pages = S.pages.filter(p => p.id !== r.id); renderTree(); return; }
+  if (payload.eventType === 'DELETE' || r.deleted_at) { S.pages = S.pages.filter(p => p.id !== r.id); renderTree(); return; }
   if (isTomb(r.id)) return;
   if (Q.pendingIds().has(r.id)) return;          // 내가 방금 고친 건 원격이 덮지 않게
   const i = S.pages.findIndex(p => p.id === r.id);

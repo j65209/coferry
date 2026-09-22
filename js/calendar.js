@@ -68,7 +68,7 @@ function eventTitleFromBlock(b, rawDate) {
 /* ===== 로드 ===== */
 async function loadEvents() {
   try {
-    const rows = await sb('cof_events?select=*&order=event_date.asc&limit=3000');
+    const rows = await sb('cof_events?select=*' + ALIVE + '&order=event_date.asc&limit=3000');
     S.events = overlayPending('cof_events', (rows || []).filter(e => !isTomb(e.id)));
   } catch (e) { /* 실패해도 재시도 폴링 */ }
   renderCalendar();
@@ -263,8 +263,9 @@ function renderCalDayPanel(focusEventId) {
     const del = document.createElement('button'); del.className = 'cdp-del'; del.textContent = '✕';
     del.title = e.source_block_id ? '이 자동 일정 지우기 (본문의 날짜를 지우면 자동으로 사라져요)' : '삭제';
     del.onclick = () => {
+      const snap = Object.assign({}, e);
       e._deleted = true;
-      Q.del('cof_events', e.id);
+      Q.del('cof_events', e.id, snap);
       S.events = S.events.filter(x => x.id !== e.id);
       renderCalendar();
     };
@@ -319,8 +320,9 @@ function syncBlockEvents(b) {
   // 사라진 날짜 삭제
   existing.forEach(e => {
     if (!wanted.has(e.event_date)) {
+      const snap = Object.assign({}, e);
       e._deleted = true;
-      Q.del('cof_events', e.id);
+      Q.del('cof_events', e.id, snap);
       S.events = S.events.filter(x => x.id !== e.id);
     }
   });
@@ -362,8 +364,9 @@ function removeAutoEventsForBlock(blockId) {
   const evts = S.events.filter(e => e.source_block_id === blockId);
   if (!evts.length) return;
   evts.forEach(e => {
+    const snap = Object.assign({}, e);
     e._deleted = true;
-    Q.del('cof_events', e.id);
+    Q.del('cof_events', e.id, snap);
   });
   S.events = S.events.filter(e => e.source_block_id !== blockId);
   renderCalendar();
@@ -372,7 +375,7 @@ function removeAutoEventsForBlock(blockId) {
 /* ===== 원격 반영 ===== */
 function onRemoteEvent(payload) {
   const r = payload.new || payload.old; if (!r) return;
-  if (payload.eventType === 'DELETE') {
+  if (payload.eventType === 'DELETE' || r.deleted_at) {
     S.events = S.events.filter(e => e.id !== r.id);
     renderCalendar();
     return;

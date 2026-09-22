@@ -23,8 +23,11 @@ const CF = {
 };
 const K = {
   auth: 'cof_auth', ver: 'cof_auth_ver', me: 'cof_me', ui: 'cof_ui',
-  queue: 'cof_queue', tomb: 'cof_tomb', last: 'cof_last_page'
+  queue: 'cof_queue', tomb: 'cof_tomb', last: 'cof_last_page',
+  hist: 'cof_history_v1'
 };
+/* 살아있는(deleted_at is null) 행만 fetch — 어느 select 든 이걸 붙인다 */
+const ALIVE = '&deleted_at=is.null';
 
 /* ===== 상태 ===== */
 const S = {
@@ -109,7 +112,43 @@ function tombs() {
   return t;
 }
 function addTomb(id) { const t = tombs(); t[id] = Date.now(); lsSet(K.tomb, t); }
+function delTomb(id) { const t = lsGet(K.tomb, {}); delete t[id]; lsSet(K.tomb, t); }
 const isTomb = id => !!tombs()[id];
+
+/* ===== rolling history (콘솔 복구용 · 최근 40개) =====
+   업무일지 5중 방어 중 "롤링 스냅샷" 이식. 삭제·수정 직전 상태를 로컬에 40개까지 순환 보관.
+   콘솔: cofHistory() 확인 / cofRestoreFromLocal(idx) 로컬 복구 / cofRestoreFromServer(entity,id) 서버 이력 조회 */
+function _cofPushHistory(rec) {
+  try {
+    const arr = lsGet(K.hist, []);
+    arr.unshift(Object.assign({ ts: Date.now(), by: (typeof S !== 'undefined' && S.me) || '' }, rec));
+    lsSet(K.hist, arr.slice(0, 40));
+  } catch (e) {}
+}
+window.cofHistory = function () {
+  const arr = lsGet(K.hist, []);
+  console.table(arr.map((r, i) => ({
+    idx: i, when: new Date(r.ts).toLocaleString('ko-KR'),
+    op: r.op, entity: r.entity, id: (r.snap && r.snap.id) || '',
+    preview: r.snap ? String(r.snap.content || r.snap.title || '').slice(0, 60) : ''
+  })));
+  return arr;
+};
+window.cofRestoreFromLocal = function (idx) {
+  const arr = lsGet(K.hist, []); const r = arr[idx];
+  if (!r || !r.snap) { console.warn('history 없음'); return; }
+  const row = Object.assign({}, r.snap, { deleted_at: null, updated_at: nowISO(), updated_by: S.me });
+  delTomb(r.snap.id); Q.up(r.entity, row);
+  console.log('[coferry] 로컬 스냅샷으로 복원 예약:', r.entity, r.snap.id);
+};
+window.cofRestoreFromServer = async function (entity, id) {
+  const rows = await sb('cof_history?select=*&entity=eq.' + entity + '&id=eq.' + id + '&order=logged_at.desc&limit=1');
+  if (!rows || !rows.length) { console.warn('서버 이력 없음'); return; }
+  const snap = rows[0].snapshot;
+  const row = Object.assign({}, snap, { deleted_at: null, updated_at: nowISO(), updated_by: S.me });
+  delTomb(id); Q.up(entity === 'pages' ? 'cof_pages' : entity === 'blocks' ? 'cof_blocks' : entity === 'comments' ? 'cof_comments' : 'cof_events', row);
+  console.log('[coferry] 서버 스냅샷으로 복원 예약:', entity, id);
+};
 
 /* ===== 즉시저장 엔진 (애플 메모 방식) =====
    - 로컬 반영은 타이핑 즉시, 서버 전송은 큐로 묶어서
@@ -127,7 +166,17 @@ const Q = {
     else this.ops.push({ k: 'up', t: table, r: row });
     this.persist(); this.schedule();
   },
-  del(table, id) {
+  /* soft delete — deleted_at 필드만 세팅해서 upsert (hard delete 안 함).
+     서버 트리거가 cof_history 에 스냅샷 자동 기록. 로컬도 rolling history 남긴다. */
+  del(table, id, snap) {
+    if (snap) _cofPushHistory({ op: 'del', entity: table.replace(/^cof_/, ''), snap: snap });
+    const row = { id: id, deleted_at: nowISO(), updated_at: nowISO(), updated_by: (typeof S !== 'undefined' && S.me) || '' };
+    this.up(table, row);
+    addTomb(id);
+  },
+  /* 관리자용 hard delete — 보관함 "완전삭제" 같은 회수 불가 경로 전용 */
+  hardDel(table, id, snap) {
+    if (snap) _cofPushHistory({ op: 'purge', entity: table.replace(/^cof_/, ''), snap: snap });
     this.ops = this.ops.filter(o => !(o.t === table && o.r && o.r.id === id));
     this.ops.push({ k: 'del', t: table, r: { id: id } });
     addTomb(id); this.persist(); this.schedule();
@@ -185,9 +234,9 @@ function badge(state) {
 /* 서버에서 방금 읽어온 목록 위에, 아직 전송 안 끝난 내 편집을 덮어씌운다.
    (이게 없으면 저장 대기 중인 글자가 재조회 한 번에 사라진다) */
 function overlayPending(table, rows, pageId) {
-  const gone = new Set(Q.ops.filter(o => o.t === table && o.k === 'del').map(o => o.r.id));
-  const out = rows.filter(r => !gone.has(r.id));
-  Q.ops.filter(o => o.t === table && o.k === 'up' && (!pageId || o.r.page_id === pageId))
+  const gone = new Set(Q.ops.filter(o => o.t === table && (o.k === 'del' || (o.k === 'up' && o.r && o.r.deleted_at))).map(o => o.r.id));
+  const out = rows.filter(r => !gone.has(r.id) && !r.deleted_at);
+  Q.ops.filter(o => o.t === table && o.k === 'up' && !o.r.deleted_at && (!pageId || o.r.page_id === pageId || o.r.page_id === undefined))
     .forEach(o => {
       const i = out.findIndex(r => r.id === o.r.id);
       if (i >= 0) out[i] = Object.assign({}, out[i], o.r);
@@ -294,13 +343,14 @@ async function pollRemote() {
   if (document.hidden) return;
   try {
     const since = _lastPull; _lastPull = nowISO();
+    // soft-delete 반영을 위해 alive 필터 걸지 않고 전체를 받아, deleted_at 있으면 삭제 이벤트로 처리
     const rows = await sb('cof_blocks?select=*&updated_at=gt.' + encodeURIComponent(since) + '&limit=300');
-    (rows || []).forEach(r => onRemoteBlock({ eventType: 'UPDATE', new: r }));
+    (rows || []).forEach(r => onRemoteBlock({ eventType: r.deleted_at ? 'DELETE' : 'UPDATE', new: r, old: r }));
     const pg = await sb('cof_pages?select=*&updated_at=gt.' + encodeURIComponent(since) + '&limit=200');
-    (pg || []).forEach(r => onRemotePage({ eventType: 'UPDATE', new: r }));
+    (pg || []).forEach(r => onRemotePage({ eventType: r.deleted_at ? 'DELETE' : 'UPDATE', new: r, old: r }));
     if (typeof onRemoteEvent === 'function') {
       const ev = await sb('cof_events?select=*&updated_at=gt.' + encodeURIComponent(since) + '&limit=300');
-      (ev || []).forEach(r => onRemoteEvent({ eventType: 'UPDATE', new: r }));
+      (ev || []).forEach(r => onRemoteEvent({ eventType: r.deleted_at ? 'DELETE' : 'UPDATE', new: r, old: r }));
     }
   } catch (e) { /* 네트워크 일시 문제 무시 */ }
 }
