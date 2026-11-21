@@ -1,5 +1,5 @@
 -- coferry Design Center — Supabase schema
--- project: 브라이트비드오피스 (ckyjkxbqsyjoqpuqwoce)
+-- project: 비드유니버스 (ckyjkxbqsyjoqpuqwoce, 예전 이름 브라이트비드오피스)
 
 create extension if not exists "pgcrypto";
 
